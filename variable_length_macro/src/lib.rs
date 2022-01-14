@@ -8,51 +8,84 @@ use quote::{quote, quote_spanned, format_ident};
 use convert_case::{Case, Casing};
 
 #[proc_macro_attribute]
-pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ty_attrs = TokenStream::from(ty_attrs);
-    let d: DeriveInput = parse_macro_input!(item);
-    let d_attrs = d.attrs;
-    let fields = match d.data {
-        Data::Struct(s) => match s.fields {
-            Fields::Named(n) => n.named,
-            Fields::Unnamed(_) => return quote_spanned!{d.ident.span()=>
-                ::core::compile_error!("define_varlen! requires structs to have named fields");
-            }.into(),
-            Fields::Unit => return quote_spanned!{d.ident.span()=>
-                ::core::compile_error!("define_varlen! does not support unit types");
-            }.into(),
+pub fn define_varlen(attrs: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    match define_varlen_impl(attrs.into(), parse_macro_input!(item)) {
+        Ok(x) => {
+            x
         },
-        Data::Enum(e) => return quote_spanned! {e.enum_token.span()=>
-            ::core::compile_error!("define_varlen! only supports structs");
-        }.into(),
-        Data::Union(u) => return quote_spanned! {u.union_token.span()=>
-            ::core::compile_error!("define_varlen! only supports structs");
-        }.into(),
-    };
+        Err(Error(msg, span)) => quote_spanned!(span => 
+            ::core::compile_error!(#msg)
+        ),
+    }.into()
+}
 
-    let tyvis = d.vis;
-    let tyvis_inner = lift_field_vis(&tyvis);
+struct Error(&'static str, proc_macro2::Span);
+
+fn define_varlen_impl(ty_attrs: TokenStream, d: DeriveInput) -> Result<TokenStream, Error> {
+    let d_attrs = d.attrs;
+    let fields = 
+        if let Data::Struct(s) = d.data {
+            if let Fields::Named(n) = s.fields {
+                n.named
+            } else {
+                return Err(Error("define_varlen requires named fields", d.ident.span()))
+            }
+        } else {
+            return Err(Error("define_varlen requires a struct", d.ident.span()))
+        };
+
+    let (tyvis, tyvis_inner) = SimpleVisibility::try_parse(&d.vis)?;
     let tyname = d.ident;
-    // let ctor_vis = min_visibility(&tyvis, fields.iter().map(|f| &f.vis)).clone();
 
-    let (varlen_fields, header_fields): (Punctuated<Field, Comma>, _) = 
-        fields.into_pairs().partition(|p| has_varlen(p.value()));
+    let FieldGroups{
+        header_fields: NormalFields{
+            attrs: header_attr,
+            vis: header_vis,
+            vis_inner: header_vis_inner,
+            idents: header_ident,
+            tys: header_ty,
+        },
+        mut_fields: NormalFields{
+            attrs: mut_attr,
+            vis: mut_vis,
+            vis_inner: mut_vis_inner,
+            idents: mut_ident,
+            tys: mut_ty,
+        },
+        varlen_fields: VarLenFields{
+            attrs: varlen_attr,
+            vis: varlen_vis,
+            vis_inner: varlen_vis_inner,
+            idents: varlen_ident,
+            mut_idents: varlen_mut_ident,
+            uninit_idents: varlen_uninit_ident,
+            len_idents: varlen_len_ident,
+            elem_tys: varlen_elem_ty,
+            len_exprs: varlen_len_expr,
+            ty_params: varlen_ty_param    
+        },
+    } = parse_fields(fields)?;
+
+    let headerty_vis = header_vis.iter().copied().max().unwrap_or(tyvis);
+    let headerty_vis_inner = header_vis_inner.iter().copied().max().unwrap_or(tyvis_inner);
+
+    let mutty_vis = mut_vis.iter().copied().max().unwrap_or(tyvis);
+    let mutty_vis_inner = mut_vis_inner.iter().copied().max().unwrap_or(tyvis_inner);
+
+    let mutref_vis = header_vis.iter().chain(mut_vis.iter()).chain(varlen_vis.iter()).copied().max().unwrap_or(tyvis);
+    let mutref_vis_inner = header_vis_inner.iter().chain(mut_vis_inner.iter()).chain(varlen_vis_inner.iter()).copied().max().unwrap_or(tyvis_inner);
+
+    // let (varlen_fields, normal_fields): (Vec<Field>, _) = 
+    //     fields.into_iter().partition(|p| has_varlen(p));
+    // let (header_fields, mut_fields): (Vec<Field>, _) =
+    //     normal_fields.into_iter().partition(|p| has_header(p));
     
-    let (header_attr, header_vis, header_idents, header_tys) = parse_header_fields(&header_fields);
-    let headerty_vis =  max_visibility(header_vis.iter());
-    let headerty_vis_inner = lift_field_vis(&headerty_vis);
+    // let NormalFields{attrs: header_attr, vis: header_vis, idents: header_ident, tys: header_ty} = parse_normal_fields(&header_fields);
+    // let headerty_vis =  max_visibility(header_vis.iter());
+    // let headerty_vis_inner = lift_field_vis(&headerty_vis);
 
-    let VarLenFields{
-        attrs: varlen_attr,
-        vises: varlen_vis,
-        idents: varlen_ident,
-        mut_idents: varlen_mut_ident,
-        uninit_idents: varlen_uninit_ident,
-        len_idents: varlen_len_ident,
-        elem_tys: varlen_elem_ty,
-        len_exprs: varlen_len_expr,
-        ty_params: varlen_ty_param
-    } = parse_varlen_fields(varlen_fields);
+    // let VarLenFields{
+    // } = parse_varlen_fields(varlen_fields);
     // let (varlen_names, varlen_elem_tys, varlen_lens, varlen_attrs)
     // let varlen_names: Vec<_> = varlen_fields.iter().map(|f| f.ident.as_ref().unwrap()).collect();
     // let varlen_elem_tys: Vec<_> = varlen_fields.iter().map(|f| f.ty)
@@ -61,11 +94,31 @@ pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenS
     // let header_generics = prune_generics(&generics);
     
 
-    let mut pub_mod_name = format_ident!("{}", tyname.to_string().to_case(Case::Snake));
-    pub_mod_name.set_span(proc_macro2::Span::call_site());
+    let mut mod_name = format_ident!("{}", tyname.to_string().to_case(Case::Snake));
+    mod_name.set_span(proc_macro2::Span::call_site());
 
-    quote! {
-        #tyvis mod #pub_mod_name {
+    let mut_ty_decl = quote! {
+        /// Mutable fields.
+        /// 
+        /// These are fixed-size fields that cannot influence the trailing array lengths.
+        /// As a result, these may be freely mutated.
+        #mutty_vis_inner struct MutFields {
+            #(
+                #mut_attr
+                #mut_vis_inner #mut_ident: #mut_ty,
+            )*
+        }
+    };
+
+    // Indicator type to use as an "if" condition for disabling the 'MutFields' struct.
+    let has_mut_ty = if mut_ident.len() > 0 {
+        vec![quote!()]
+    } else {
+        vec![]
+    };
+
+    Ok(quote! {
+        #tyvis mod #mod_name {
             /// Array offsets and lengths for all trailing arrays.
             pub(super) struct Offsets {
                 #(
@@ -81,7 +134,7 @@ pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenS
             #headerty_vis_inner struct Header {
                 #(
                     #header_attr
-                    #header_vis #header_idents: #header_tys,
+                    #header_vis_inner #header_ident: #header_ty,
                 )*
             }
 
@@ -127,11 +180,32 @@ pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenS
                 }
             }
 
+            #(
+                #has_mut_ty // Disable if there's no MutFields type
+                #mut_ty_decl
+            )*
+
             #tyvis_inner struct Init< #(#varlen_ty_param,)* > {
-                pub header: Header,
+                #headerty_vis_inner header: Header,
+                #(
+                    #has_mut_ty
+                    #mutty_vis_inner mut_fields: MutFields,
+                )*
                 #(
                     #varlen_attr
-                    #varlen_vis #varlen_ident: #varlen_ty_param,
+                    #varlen_vis_inner #varlen_ident: #varlen_ty_param,
+                )*
+            }
+
+            #mutref_vis_inner struct MutRef<'a> {
+                #headerty_vis_inner header: &'a Header,
+                #(
+                    #has_mut_ty
+                    #mutty_vis_inner mut_fields: &'a mut MutFields,
+                )*
+                #(
+                    #varlen_attr
+                    #varlen_vis_inner #varlen_ident: &'a mut [#varlen_elem_ty],
                 )*
             }
 
@@ -152,9 +226,11 @@ pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenS
         #ty_attrs
         #(#d_attrs)*
         #tyvis struct #tyname {
-            // TODO(reinerp): Restrict visibility of the header to the max visibility of its
-            // fields.
-            #headerty_vis header: #pub_mod_name::Header,
+            #headerty_vis header: #mod_name::Header,
+            #(
+                #has_mut_ty
+                #mutty_vis mut_fields: #mod_name::MutFields,
+            )*
             #(
                 #varlen_attr
                 #varlen_vis #varlen_ident: ::variable_length::VarLenField<[#varlen_elem_ty]>,
@@ -182,15 +258,15 @@ pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenS
                 )*
                 false;
             
-            type DropTailFn = #pub_mod_name::DropTailFn;
+            type DropTailFn = #mod_name::DropTailFn;
 
             fn prepare_drop_tail(&self) -> Self::DropTailFn {
-                #pub_mod_name::DropTailFn(self.header.offsets())
+                #mod_name::DropTailFn(self.header.offsets())
             }
         }
 
         unsafe impl< #( #varlen_ty_param: ::variable_length::Initializer<[#varlen_elem_ty]>, )* 
-        > ::variable_length::Initializer<#tyname> for #pub_mod_name::Init< #( #varlen_ty_param, )* > {
+        > ::variable_length::Initializer<#tyname> for #mod_name::Init< #( #varlen_ty_param, )* > {
             unsafe fn initialize(self, dst: ::core::ptr::NonNull<#tyname>) {
                 let offsets = self.header.offsets();
                 let p = dst.cast::<u8>();
@@ -204,6 +280,10 @@ pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenS
                 let written_header = #tyname {
                     header: self.header,
                     #(
+                        #has_mut_ty
+                        mut_fields: self.mut_fields,
+                    )*
+                    #(
                         #varlen_ident: ::variable_length::VarLenField::new_unchecked(),
                     )*
                 };
@@ -212,7 +292,7 @@ pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenS
         }
 
         unsafe impl< #( #varlen_ty_param: ::variable_length::Initializer<[#varlen_elem_ty]>, )* 
-        > ::variable_length::SizedInitializer<#tyname> for #pub_mod_name::Init< #( #varlen_ty_param, )* > {
+        > ::variable_length::SizedInitializer<#tyname> for #mod_name::Init< #( #varlen_ty_param, )* > {
             #[inline]
             fn layout(&self) -> ::core::option::Option<::core::alloc::Layout> {
                 self.header.layout_cautious()
@@ -220,6 +300,37 @@ pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenS
         }
 
         impl #tyname {
+            /// Mutable access to all fields simultaneously, except the header.
+            #mutref_vis fn mut_ref(mut self: ::core::pin::Pin<&mut Self>) -> #mod_name::MutRef {
+                let offsets = self.header.offsets();
+                unsafe {
+                    #(
+                        let #varlen_ident = ::variable_length::macro_support::slice_mut_ref_split(self.as_mut(), offsets.#varlen_ident, offsets.#varlen_len_ident);
+                    )*
+                    let m = self.get_unchecked_mut();
+                    #mod_name::MutRef {
+                        header: &m.header,
+                        #(
+                            #has_mut_ty
+                            mut_fields: &mut m.mut_fields,
+                        )*
+                        #(
+                            #varlen_ident,
+                        )*
+                    }
+                }
+            }
+
+            #(
+                #has_mut_ty
+                /// Gets a mutable reference to the mutable fields.
+                #mutty_vis fn mut_fields_mut(self: ::core::pin::Pin<&mut Self>) -> &mut #mod_name::MutFields {
+                    unsafe {
+                        &mut self.get_unchecked_mut().mut_fields
+                    }
+                }
+            )*
+
             #(
                 #varlen_attr
                 #[inline(always)]
@@ -243,26 +354,111 @@ pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenS
                 }
             )*
         }
-    }.into()
+    })
 }
 
 // fn prune_generics(d: &Generics) -> Generics {
 //     d.clone()
 // }
 
-fn has_varlen(f: &Field) -> bool {
-    let varlen_attr: Attribute = parse_quote!{ #[varlen] };
-    for attr in &f.attrs {
-        if attr == &varlen_attr {
-            return true;
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
+enum SimpleVisibility {
+    Private = 0,
+    Super = 1,
+    SuperSuper = 2,
+    Crate = 3,
+    Public = 4,
+}
+
+impl quote::ToTokens for SimpleVisibility {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            SimpleVisibility::Private => {},
+            SimpleVisibility::Super => tokens.extend(quote!(pub(super))),
+            SimpleVisibility::SuperSuper => tokens.extend(quote!(pub(in super::super))),
+            SimpleVisibility::Crate => tokens.extend(quote!(pub(crate))),
+            SimpleVisibility::Public => tokens.extend(quote!(pub)),
+        }
+    }   
+}
+
+impl SimpleVisibility {
+    fn bad_visibility(span: proc_macro2::Span) -> Error {
+        Error(
+            "Visibility must be one of: (none), pub, pub(crate), pub(self), pub(super)",
+            span
+        )
+    }
+
+    fn try_parse(v: &Visibility) -> Result<(SimpleVisibility, SimpleVisibility), Error> {
+        Ok(
+            match v {
+                Visibility::Public(_) => (SimpleVisibility::Public, SimpleVisibility::Public),
+                Visibility::Crate(_) => (SimpleVisibility::Crate, SimpleVisibility::Crate),
+                Visibility::Restricted(r) => {
+                    if r.path.is_ident("crate") {
+                        (SimpleVisibility::Crate, SimpleVisibility::Crate)
+                    } else if r.path.is_ident("super") {
+                        (SimpleVisibility::Super, SimpleVisibility::SuperSuper)
+                    } else if r.path.is_ident("self") {
+                        (SimpleVisibility::Private, SimpleVisibility::Super)
+                    } else {
+                        return Err(Self::bad_visibility(v.span()))
+                    }
+                },
+                Visibility::Inherited => (SimpleVisibility::Private, SimpleVisibility::Super),
+            }
+        )
+    }
+
+    // fn inner(self, span: proc_macro2::Span) -> Result<SimpleVisibility, Error> {
+    //     Ok(
+    //         match self {
+    //             SimpleVisibility::Private => SimpleVisibility::Super,
+    //             SimpleVisibility::Super => SimpleVisibility::SuperSuper,
+    //             SimpleVisibility::SuperSuper => return Err(Self::bad_visibility(span)),
+    //             SimpleVisibility::Crate => SimpleVisibility::Crate,
+    //             SimpleVisibility::Public => SimpleVisibility::Public,
+    //         }
+    //     )
+    // }
+}
+
+struct NormalFields {
+    attrs: Vec<TokenStream>,
+    vis: Vec<SimpleVisibility>,
+    vis_inner: Vec<SimpleVisibility>,
+    idents: Vec<Ident>,
+    tys: Vec<Type>,
+}
+
+impl NormalFields {
+    fn new() -> Self {
+        NormalFields{
+            attrs: Vec::new(),
+            vis: Vec::new(),
+            vis_inner: Vec::new(),
+            idents: Vec::new(),
+            tys: Vec::new(),
         }
     }
-    false
+
+    fn push(&mut self, f: Field) -> Result<(), Error> {
+        let attrs = f.attrs;
+        self.attrs.push(quote!(#( #attrs )*));
+        let (vis, vis_inner) = SimpleVisibility::try_parse(&f.vis)?;
+        self.vis.push(vis);
+        self.vis_inner.push(vis_inner);
+        self.idents.push(f.ident.unwrap());
+        self.tys.push(f.ty);
+        Ok(())
+    }
 }
 
 struct VarLenFields {
     attrs: Vec<TokenStream>,
-    vises: Vec<Visibility>,
+    vis: Vec<SimpleVisibility>,
+    vis_inner: Vec<SimpleVisibility>,
     idents: Vec<Ident>,
     mut_idents: Vec<Ident>,
     uninit_idents: Vec<Ident>,
@@ -272,124 +468,173 @@ struct VarLenFields {
     ty_params: Vec<Ident>,
 }
 
-fn parse_varlen_fields(varlen_fields: Punctuated<Field, Comma>) -> VarLenFields {
-    let varlen_attr: Attribute = parse_quote!{ #[varlen] };
-    let mut attrs = Vec::new();
-    let mut vises = Vec::new();
-    let mut idents = Vec::new();
-    let mut len_idents = Vec::new();
-    let mut uninit_idents = Vec::new();
-    let mut mut_idents = Vec::new();
-    let mut elem_tys = Vec::new();
-    let mut len_exprs = Vec::new();
-    let mut ty_params = Vec::new();
-    // let mut varlen_marker_fields = Vec::new();
-    // let mut varlen_init_ty_constraints = Vec::new();
-    // let mut varlen_init_tys = Vec::new();
-    // let mut varlen_init_fields = Vec::new();
-    for (i, f) in varlen_fields.into_iter().enumerate() {
+impl VarLenFields {
+    fn new() -> Self {
+        VarLenFields{
+            attrs: Vec::new(),
+            vis: Vec::new(),
+            vis_inner: Vec::new(),
+            idents: Vec::new(),
+            mut_idents: Vec::new(),
+            uninit_idents: Vec::new(),
+            len_idents: Vec::new(),
+            elem_tys: Vec::new(),
+            len_exprs: Vec::new(),
+            ty_params: Vec::new(),
+        }
+    }
+
+    fn push(&mut self, f: Field) -> Result<(), Error> {
         let span = f.span();
-        let f_attrs = f.attrs.into_iter().filter(|attr| attr != &varlen_attr);
-        attrs.push(quote_spanned!{span=> #(#f_attrs)* });
-        vises.push(f.vis);
-        mut_idents.push(format_ident!("{}_mut", f.ident.as_ref().unwrap()));
-        uninit_idents.push(format_ident!("{}_uninit", f.ident.as_ref().unwrap()));
-        len_idents.push(format_ident!("{}_len", f.ident.as_ref().unwrap()));
-        idents.push(f.ident.unwrap());
+        let attrs = f.attrs;
+        self.attrs.push(quote_spanned!{span=> #(#attrs)* });
+        let (vis, vis_inner) = SimpleVisibility::try_parse(&f.vis)?;
+        self.vis.push(vis);
+        self.vis_inner.push(vis_inner);
+        self.mut_idents.push(format_ident!("{}_mut", f.ident.as_ref().unwrap()));
+        self.uninit_idents.push(format_ident!("{}_uninit", f.ident.as_ref().unwrap()));
+        self.len_idents.push(format_ident!("{}_len", f.ident.as_ref().unwrap()));
+        self.ty_params.push(format_ident!("Init{}", f.ident.as_ref().unwrap().to_string().to_case(Case::UpperCamel)));
+        self.idents.push(f.ident.unwrap());
         let (elem_ty, len_expr) = match f.ty {
             Type::Array(a) => {
                 let len = a.len;
                 (*a.elem, quote_spanned!{len.span()=> #len})
             },
-            _ => {
-                let span = f.ty.span();
-                (f.ty, quote_spanned!{span => 
-                    ::core::compile_error!("Fields annotated with #[varlen] must be of array type")
-                })
-            },
+            _ => 
+                return Err(Error(
+                    "Fields annotated with #[varlen] must be of array type",
+                    f.ty.span())),
         };
-        elem_tys.push(elem_ty);
-        len_exprs.push(len_expr);
-        ty_params.push(format_ident!("Init{}", i));
+        self.elem_tys.push(elem_ty);
+        self.len_exprs.push(len_expr);
+        Ok(())
     }
-    VarLenFields{attrs, vises, idents, mut_idents, uninit_idents, len_idents, elem_tys, len_exprs, ty_params}
 }
 
-// fn min_visibility<'t>(a: &'t Visibility, b: impl Iterator<Item= &'t Visibility>) -> &'t Visibility {
-//     let mut r = a;
+struct FieldGroups {
+    header_fields: NormalFields,
+    mut_fields: NormalFields,
+    varlen_fields: VarLenFields,
+}
+
+fn parse_fields(fields: Punctuated<Field, Comma>) -> Result<FieldGroups, Error> {
+    let varlen_attr: Attribute = parse_quote!{ #[varlen] };
+    let header_attr: Attribute = parse_quote!{ #[header] };
+
+    let mut header_fields = NormalFields::new();
+    let mut mut_fields = NormalFields::new();
+    let mut varlen_fields = VarLenFields::new();
+    for mut f in fields {
+        let mut varlen_span = None;
+        let mut header_span = None;
+        f.attrs.retain(|attr| {
+            if attr == &varlen_attr {
+                varlen_span = Some(attr.span());
+                false
+            } else if attr == &header_attr {
+                header_span = Some(attr.span());
+                false
+            } else {
+                true
+            }
+        });
+        match (varlen_span, header_span) {
+            (Some(varlen_span), Some(_)) => return Err(
+                Error("Field must have at most one of #[varlen] and #[header] attributes", varlen_span)),
+            (None, Some(_)) => header_fields.push(f)?,
+            (Some(_), None) => varlen_fields.push(f)?,
+            (None, None) => mut_fields.push(f)?,
+        }
+    }
+    Ok(FieldGroups{header_fields, mut_fields, varlen_fields})
+}
+
+// fn parse_varlen_fields(varlen_fields: Punctuated<Field, Comma>) -> VarLenFields {
+//     let varlen_attr: Attribute = parse_quote!{ #[varlen] };
+//     let mut attrs = Vec::new();
+//     let mut vises = Vec::new();
+//     let mut idents = Vec::new();
+//     let mut len_idents = Vec::new();
+//     let mut uninit_idents = Vec::new();
+//     let mut mut_idents = Vec::new();
+//     let mut elem_tys = Vec::new();
+//     let mut len_exprs = Vec::new();
+//     let mut ty_params = Vec::new();
+//     // let mut varlen_marker_fields = Vec::new();
+//     // let mut varlen_init_ty_constraints = Vec::new();
+//     // let mut varlen_init_tys = Vec::new();
+//     // let mut varlen_init_fields = Vec::new();
+//     for (i, f) in varlen_fields.into_iter().enumerate() {
+//     }
+//     VarLenFields{attrs, vises, idents, mut_idents, uninit_idents, len_idents, elem_tys, len_exprs, ty_params}
+// }
+
+// fn max_visibility<'t>(b: impl Iterator<Item= &'t Visibility>) -> Visibility {
+//     let mut r = Visibility::Inherited;
 //     for v in b {
-//         if lt_visibility(v, r) {
-//             r = v;
+//         if lt_visibility(&r, v) {
+//             r = v.clone();
 //         }
 //     }
 //     r
 // }
 
-fn max_visibility<'t>(b: impl Iterator<Item= &'t Visibility>) -> Visibility {
-    let mut r = Visibility::Inherited;
-    for v in b {
-        if lt_visibility(&r, v) {
-            r = v.clone();
-        }
-    }
-    r
-}
+// fn lt_visibility(a: &Visibility, b: &Visibility) -> bool {
+//     vis_rank(a) < vis_rank(b)
+// }
 
-fn lt_visibility(a: &Visibility, b: &Visibility) -> bool {
-    vis_rank(a) < vis_rank(b)
-}
+// fn vis_rank(a: &Visibility) -> usize {
+//     match a {
+//         Visibility::Public(_) => 3,
+//         Visibility::Crate(_) => 2,
+//         Visibility::Restricted(r) => {
+//             if r.path.is_ident("crate") {
+//                 2
+//             } else if r.path.is_ident("super") {
+//                 1
+//             } else if r.path.is_ident("self") {
+//                 0
+//             } else {
+//                 panic!("Unexpected visibility; pub(in foo) is not supported")
+//             }
+//         },
+//         Visibility::Inherited => 0,
+//     }
+// }
 
-fn vis_rank(a: &Visibility) -> usize {
-    match a {
-        Visibility::Public(_) => 3,
-        Visibility::Crate(_) => 2,
-        Visibility::Restricted(r) => {
-            if r.path.is_ident("crate") {
-                2
-            } else if r.path.is_ident("super") {
-                1
-            } else if r.path.is_ident("self") {
-                0
-            } else {
-                panic!("Unexpected visibility; pub(in foo) is not supported")
-            }
-        },
-        Visibility::Inherited => 0,
-    }
-}
+// fn parse_normal_fields(header_fields: &Punctuated<Field, Comma>) -> NormalFields {
+//     let mut attrs = Vec::new();
+//     let mut idents = Vec::new();
+//     let mut tys = Vec::new();
+//     let mut vis = Vec::new();
+//     for f in header_fields {
+//         let f_attrs = &f.attrs;
+//         attrs.push(quote_spanned!{f.span() => #( #f_attrs )* });
+//         idents.push(f.ident.as_ref().unwrap());
+//         tys.push(&f.ty);
+//         vis.push(lift_field_vis(&f.vis));
+//     }
+//     NormalFields{attrs, vis, idents, tys}
+// }
 
-fn parse_header_fields(header_fields: &Punctuated<Field, Comma>) -> (Vec<TokenStream>, Vec<Visibility>, Vec<&Ident>, Vec<&Type>) {
-    let mut attrs = Vec::new();
-    let mut idents = Vec::new();
-    let mut tys = Vec::new();
-    let mut vis = Vec::new();
-    for f in header_fields {
-        let f_attrs = &f.attrs;
-        attrs.push(quote_spanned!{f.span() => #( #f_attrs )* });
-        idents.push(f.ident.as_ref().unwrap());
-        tys.push(&f.ty);
-        vis.push(lift_field_vis(&f.vis));
-    }
-    (attrs, vis, idents, tys)
-}
-
-fn lift_field_vis(a: &Visibility) -> Visibility {
-    match a {
-        Visibility::Public(_) => a.clone(),
-        Visibility::Crate(_) => a.clone(),
-        Visibility::Restricted(r) => {
-            if r.path.is_ident("crate") {
-                a.clone()
-            } else if r.path.is_ident("super") {
-                parse_quote!{ pub(in super::super) }
-            } else if r.path.is_ident("self") {
-                parse_quote!{ pub(super) }
-            } else {
-                panic!("Unexpected visibility; pub(in foo) is not supported")
-            }
-        },
-        Visibility::Inherited => {
-            parse_quote!{ pub(super) }  
-        },
-    }
-}
+// fn lift_field_vis(a: &Visibility) -> Visibility {
+//     match a {
+//         Visibility::Public(_) => a.clone(),
+//         Visibility::Crate(_) => a.clone(),
+//         Visibility::Restricted(r) => {
+//             if r.path.is_ident("crate") {
+//                 a.clone()
+//             } else if r.path.is_ident("super") {
+//                 parse_quote!{ pub(in super::super) }
+//             } else if r.path.is_ident("self") {
+//                 parse_quote!{ pub(super) }
+//             } else {
+//                 panic!("Unexpected visibility; pub(in foo) is not supported")
+//             }
+//         },
+//         Visibility::Inherited => {
+//             parse_quote!{ pub(super) }  
+//         },
+//     }
+// }

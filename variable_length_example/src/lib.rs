@@ -4,9 +4,39 @@ use variable_length::define_varlen;
 /// This struct contains two lengths and three arrays.
 pub struct CoolStruct {
     /// This length controls the first two arrays.
+    #[header]
     pub small_len: u8,
     /// This length controls the last array.
+    #[header]
     pub big_len: usize,
+
+    #[varlen]
+    /// An array.
+    pub arr1: [u8; self.small_len as usize],
+
+    #[varlen]
+    /// Another array.
+    pub arr2: [u8; self.small_len as usize],
+
+    #[varlen]
+    /// A third array.
+    pub arr3: [u16; self.big_len],
+}
+
+#[define_varlen]
+/// This struct contains two lengths and three arrays.
+pub struct CoolStructWithMutableFields {
+    /// This length controls the first two arrays.
+    #[header]
+    pub small_len: u8,
+    /// This length controls the last array.
+    #[header]
+    pub big_len: usize,
+
+    /// This field can be modified on an existing object.
+    pub some_string: String,
+    /// So can this.
+    pub some_int: i16,
 
     #[varlen]
     /// An array.

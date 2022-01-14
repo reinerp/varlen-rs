@@ -117,3 +117,8 @@ pub unsafe fn slice_mut_ref<T, U>(base: Pin<&mut T>, offset: usize, len: usize) 
     core::slice::from_raw_parts_mut((base.get_unchecked_mut() as *mut T as *mut u8).wrapping_add(offset) as *mut U, len)
 }
 
+#[inline(always)]
+pub unsafe fn slice_mut_ref_split<'a, T, U>(base: Pin<&mut T>, offset: usize, len: usize) -> &'a mut [U] {
+    core::slice::from_raw_parts_mut((base.get_unchecked_mut() as *mut T as *mut u8).wrapping_add(offset) as *mut U, len)
+}
+

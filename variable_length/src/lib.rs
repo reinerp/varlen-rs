@@ -41,6 +41,13 @@ pub unsafe trait SizedInitializer<T: ?Sized>: Initializer<T> {
 //    * what's the extensibility story for that?
 
 
+/// Marker type for a variable-length field of a `#[define_varlen]` struct.
+/// 
+/// Fields of this type in a struct mean that there is a trailing variable-length array
+/// in this struct. By desing, nn object of type `VarLenField` cannot be directly 
+/// constructed within safe code; instead, you must construct the struct around it,
+/// using one of the safe variable-length-struct initialization methods such as 
+/// `variable_length::boxed::Box::new`.
 pub struct VarLenField<T: ?Sized>(core::marker::PhantomPinned, core::marker::PhantomData<T>);
 
 impl<T: ?Sized> VarLenField<T> {
