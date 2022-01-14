@@ -18,7 +18,7 @@ unsafe impl<T, Lambda: FnMut(usize) -> T> ArrayInitializer<T> for FillSequential
     }
 }
 
-pub struct FillWithDefault();
+pub struct FillWithDefault;
 
 unsafe impl<T: Default> ArrayInitializer<T> for FillWithDefault {
     unsafe fn initialize(self, dst: NonNull<[T]>) {

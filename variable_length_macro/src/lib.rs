@@ -249,7 +249,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             )*
         }
 
-        impl ::variable_length::VarLen for #tyname {
+        unsafe impl ::variable_length::VarLen for #tyname {
             // TODO(reinerp): Need a strategy to avoid things like core::mem::size_of_val(self),
             // which would be different if 'self' takes different types. That could lead to unsafety.
             //

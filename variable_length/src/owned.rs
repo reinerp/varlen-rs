@@ -73,6 +73,7 @@ unsafe impl<T: VarLen> VarLenInitializer<T> for Owned<'_, T> {
         core::mem::forget(self);
     }
 
+    #[inline]
     fn required_size(&self) -> Option<usize> {
         Some(self.size())
     }

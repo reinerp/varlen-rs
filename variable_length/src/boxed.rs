@@ -66,7 +66,27 @@ impl<T: VarLen> Drop for Box<T> {
 
 impl<T: VarLen> core::ops::Deref for Box<T> {
     type Target = T;
+    #[inline]
     fn deref(&self) -> &T {
         unsafe { self.0.as_ref() }
+    }
+}
+
+unsafe impl<T: VarLen> VarLenInitializer<T> for Box<T> {
+    unsafe fn initialize(self, dst: NonNull<T>) {
+        let size = self.size();
+        let layout = Layout::from_size_align(size, T::ALIGN).unwrap_or_else(|_| allocation_overflow());
+        // Safety:
+        //  * Owned has unique access to its pointer
+        //  * dst is unique
+        //  * dst size is guaranteed by the SizedInitializer call
+        core::ptr::copy_nonoverlapping(self.0.as_ptr(), dst.as_ptr(), self.size());
+        std::alloc::dealloc(self.0.as_ptr() as *mut u8, layout);
+        core::mem::forget(self);
+    }
+
+    #[inline]
+    fn required_size(&self) -> Option<usize> {
+        Some(self.size())
     }
 }
