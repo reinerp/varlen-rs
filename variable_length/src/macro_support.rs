@@ -47,13 +47,13 @@ pub const fn raw_layout_of<T>() -> UncheckedLayout {
 }
 
 #[inline(always)]
-pub const fn cat_array_cautious<T>(layout: Option<UncheckedLayout>, array_len: usize) -> Option<UncheckedLayout> {
-    let layout = match layout {
-        Some(layout) => layout,
+pub const fn cat_array_cautious<T>(size: Option<usize>, array_len: usize) -> Option<usize> {
+    let size = match size {
+        Some(size) => size,
         None => return None,
     };
     let elem_align = core::mem::align_of::<T>();
-    let size = match layout.size.checked_add(elem_align - 1) {
+    let size = match size.checked_add(elem_align - 1) {
         Some(size) => size,
         None => return None,
     };
@@ -62,14 +62,19 @@ pub const fn cat_array_cautious<T>(layout: Option<UncheckedLayout>, array_len: u
         Some(x) => x,
         None => return None,
     };
-    let size = match size.checked_add(array_size) {
-        Some(x) => x,
+    size.checked_add(array_size)
+}
+
+#[inline(always)]
+pub const fn size_to_layout_cautious(size: Option<usize>, align: usize) -> Option<Layout> {
+    let size = match size {
+        Some(size) => size,
         None => return None,
     };
-    Some(UncheckedLayout{
-        size,
-        align: max(layout.align, elem_align),
-    })
+    match Layout::from_size_align(size, align) {
+        Ok(l) => Some(l),
+        Err(_) => None,
+    }
 }
 
 #[inline(always)]
@@ -85,16 +90,12 @@ pub const fn add_array_fast<T>(size: usize, array_len: usize) -> usize {
 }
 
 #[inline(always)]
-pub const fn cat_array_fast<T>(layout: UncheckedLayout, array_len: usize) -> UncheckedLayout {
+pub const fn cat_array_fast<T>(size: usize, array_len: usize) -> usize {
     let elem_align = core::mem::align_of::<T>();
-    let size = layout.size.wrapping_add(elem_align - 1);
+    let size = size.wrapping_add(elem_align - 1);
     let size = size & (0usize.wrapping_sub(elem_align));
     let array_size = core::mem::size_of::<T>().wrapping_mul(array_len);
-    let size = size.wrapping_add(array_size);
-    UncheckedLayout{
-        size,
-        align: max(layout.align, elem_align),
-    }
+    size.wrapping_add(array_size)
 }
 
 #[inline(always)]
@@ -122,3 +123,14 @@ pub unsafe fn slice_mut_ref_split<'a, T, U>(base: Pin<&mut T>, offset: usize, le
     core::slice::from_raw_parts_mut((base.get_unchecked_mut() as *mut T as *mut u8).wrapping_add(offset) as *mut U, len)
 }
 
+#[inline(always)]
+pub const fn array_max(arr: &[usize]) -> usize {
+    let mut i = 0;
+    let mut r = usize::MIN;
+    while i < arr.len() {
+        let v = arr[i];
+        r = if r > v { r } else { v };
+        i += 1;
+    }
+    r
+}

@@ -2,9 +2,9 @@
 pub mod macro_support;
 pub mod init;
 pub mod boxed;
+// pub mod seq;
 
 pub use variable_length_macro::define_varlen;
-use core::alloc::Layout;
 use core::ptr::NonNull;
 
 pub trait DropTailFn<T: ?Sized> {
@@ -12,7 +12,9 @@ pub trait DropTailFn<T: ?Sized> {
 }
 
 pub trait VarLen {
-    fn layout(&self) -> Layout;
+    fn size(&self) -> usize;
+
+    const ALIGN: usize;
 
     const NEEDS_DROP_TAIL: bool;
 
@@ -30,7 +32,7 @@ pub unsafe trait Initializer<T: ?Sized> {
 ///  * 'layout' is correct for the writes in 'initialize'
 ///  * after 'initialize', the 'VarLen::layout' matches the 'SizedInitializer::layout'.
 pub unsafe trait SizedInitializer<T: ?Sized>: Initializer<T> {
-    fn layout(&self) -> Option<Layout>;
+    fn size(&self) -> Option<usize>;
 }
 
 // Things I want to support:

@@ -1,19 +1,26 @@
 use super::{DropTailFn, SizedInitializer, VarLen};
 
+use core::alloc::Layout;
 use core::ptr::NonNull;
 use core::pin::Pin;
 
 /// Box<T>, but for VarLen types T.
 pub struct Box<T: VarLen>(NonNull<T>);
 
+#[inline(never)]
+fn allocation_overflow() -> ! {
+    panic!("Allocation size overflow")
+}
+
 impl<T: VarLen> Box<T> {
     pub fn new(init: impl SizedInitializer<T>) -> Self {
-        let layout = init.layout().unwrap_or_else(|| panic!("Allocation size overflow"));
+        let size = init.size().unwrap_or_else(|| allocation_overflow());
+        let layout = Layout::from_size_align(size, T::ALIGN).unwrap_or_else(|_| allocation_overflow());
         unsafe {
             let p = std::alloc::alloc(layout) as *mut T;
             init.initialize(NonNull::new_unchecked(p));
             let mut p=  NonNull::new_unchecked(p);
-            debug_assert_eq!(p.as_mut().layout(), layout);
+            debug_assert_eq!(p.as_mut().size(), size);
             Box(p)
         }
     }
@@ -43,7 +50,8 @@ impl<T: VarLen> Drop for Box<T> {
             //     be a custom Drop on the header that reads the tail.
             //  3. Drop the tail. Uses the values we read from the header in step 1.
             //  4. Deallocate.
-            let layout = self.as_mut().layout();
+            let size = self.as_mut().size();
+            let layout = Layout::from_size_align(size, T::ALIGN).unwrap_or_else(|_| allocation_overflow());
             let drop_tail_fn = self.as_mut().prepare_drop_tail();
             let p = self.0.as_ptr();
             core::ptr::drop_in_place(p);

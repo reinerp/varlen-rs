@@ -159,21 +159,21 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 )*
 
                 #[inline]
-                pub(super) const fn layout_cautious(&self) -> ::core::option::Option<::core::alloc::Layout> {
-                    let layout = ::variable_length::macro_support::layout_of::<Self>();
+                pub(super) const fn size_cautious(&self) -> ::core::option::Option<usize> {
+                    let size = ::core::option::Option::Some(::core::mem::size_of::<super::#tyname>());
                     #(
-                        let layout = ::variable_length::macro_support::cat_array_cautious::<#varlen_elem_ty>(layout, self.#varlen_len_ident());
+                        let size = ::variable_length::macro_support::cat_array_cautious::<#varlen_elem_ty>(size, self.#varlen_len_ident());
                     )*
-                    ::variable_length::macro_support::to_alloc_layout(layout)
+                    size
                 }
 
                 #[inline]
-                pub(super) const unsafe fn layout_fast(&self) -> ::core::alloc::Layout {
-                    let layout = ::variable_length::macro_support::raw_layout_of::<Self>();
+                pub(super) const unsafe fn size_fast(&self) -> usize {
+                    let size = ::core::mem::size_of::<super::#tyname>();
                     #(
-                        let layout = ::variable_length::macro_support::cat_array_fast::<#varlen_elem_ty>(layout, self.#varlen_len_ident());
+                        let size = ::variable_length::macro_support::cat_array_fast::<#varlen_elem_ty>(size, self.#varlen_len_ident());
                     )*
-                    unsafe { ::variable_length::macro_support::to_alloc_layout_unchecked(layout) }
+                    size
                 }
 
                 #[inline(always)]
@@ -260,9 +260,18 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             //    field names in scope, as local variables. Actually I'm starting to really like this...
             
             #[inline]
-            fn layout(&self) -> ::core::alloc::Layout {
-                unsafe { self.header.layout_fast() }
+            fn size(&self) -> usize {
+                unsafe { self.header.size_fast() }
             }
+
+            const ALIGN: usize = ::variable_length::macro_support::array_max(
+                &[
+                    ::core::mem::align_of::<Self>(),
+                    #(
+                        ::core::mem::align_of::<#varlen_elem_ty>(),
+                    )*
+                ]
+            );
 
             const NEEDS_DROP_TAIL: bool = 
                 #(
@@ -306,8 +315,8 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
         unsafe impl< #( #varlen_ty_param: ::variable_length::Initializer<[#varlen_elem_ty]>, )* 
         > ::variable_length::SizedInitializer<#tyname> for #mod_name::Init< #( #varlen_ty_param, )* > {
             #[inline]
-            fn layout(&self) -> ::core::option::Option<::core::alloc::Layout> {
-                self.header.layout_cautious()
+            fn size(&self) -> ::core::option::Option<usize> {
+                self.header.size_cautious()
             }
         }
 
