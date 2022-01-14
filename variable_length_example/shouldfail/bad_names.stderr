@@ -1,0 +1,10 @@
+error[E0124]: field `x` is already declared
+ --> shouldfail/bad_names.rs:3:1
+  |
+3 | #[define_varlen]
+  | ^^^^^^^^^^^^^^^^
+  | |
+  | field already declared
+  | `x` first declared here
+  |
+  = note: this error originates in the attribute macro `define_varlen` (in Nightly builds, run with -Z macro-backtrace for more info)

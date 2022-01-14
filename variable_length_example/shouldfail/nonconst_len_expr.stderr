@@ -1,0 +1,22 @@
+error: pointers cannot be cast to integers during const eval
+  --> shouldfail/nonconst_len_expr.rs:17:16
+   |
+17 |     arr1: [u8; (&self) as *const _ as usize],
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: at compile-time, pointers do not have an integer value
+   = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
+
+error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+  --> shouldfail/nonconst_len_expr.rs:20:16
+   |
+20 |     arr2: [u8; next_rand()],
+   |                ^^^^^^^^^^^
+
+error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
+  --> shouldfail/nonconst_len_expr.rs:26:16
+   |
+26 |     arr4: [u8; std::mem::transmute(&self) ]
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior

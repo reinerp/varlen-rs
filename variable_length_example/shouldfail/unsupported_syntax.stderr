@@ -1,0 +1,65 @@
+error: define_varlen requires named fields
+ --> shouldfail/unsupported_syntax.rs:4:8
+  |
+4 | struct UnnamedStruct(u8);
+  |        ^^^^^^^^^^^^^
+
+error: define_varlen requires a struct
+ --> shouldfail/unsupported_syntax.rs:7:6
+  |
+7 | enum Enum { A, B }
+  |      ^^^^
+
+error: define_varlen requires a struct
+  --> shouldfail/unsupported_syntax.rs:10:7
+   |
+10 | union Union {
+   |       ^^^^^
+
+error[E0433]: failed to resolve: could not find `foo` in the crate root
+  --> shouldfail/unsupported_syntax.rs:17:19
+   |
+17 |     pub(in crate::foo::bar) x: u8,
+   |                   ^^^ could not find `foo` in the crate root
+
+error: Visibility must be one of: (none), pub, pub(crate), pub(self), pub(super)
+  --> shouldfail/unsupported_syntax.rs:17:5
+   |
+17 |     pub(in crate::foo::bar) x: u8,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Fields annotated with #[varlen] must be of array type
+  --> shouldfail/unsupported_syntax.rs:23:8
+   |
+23 |     x: u8,
+   |        ^^
+
+error: Field must have at most one of #[varlen] and #[header] attributes
+  --> shouldfail/unsupported_syntax.rs:28:5
+   |
+28 |     #[varlen] #[header]
+   |     ^^^^^^^^^
+
+error: define_varlen could not parse this as a struct
+  --> shouldfail/unsupported_syntax.rs:33:1
+   |
+33 | fn f() {}
+   | ^^
+
+error: cannot find attribute `varlen` in this scope
+  --> shouldfail/unsupported_syntax.rs:28:7
+   |
+28 |     #[varlen] #[header]
+   |       ^^^^^^
+
+error: cannot find attribute `header` in this scope
+  --> shouldfail/unsupported_syntax.rs:28:17
+   |
+28 |     #[varlen] #[header]
+   |                 ^^^^^^
+
+error: cannot find attribute `varlen` in this scope
+  --> shouldfail/unsupported_syntax.rs:22:7
+   |
+22 |     #[varlen]
+   |       ^^^^^^

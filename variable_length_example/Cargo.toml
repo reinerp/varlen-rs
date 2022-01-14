@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 variable_length = { version = "0.1", path = "../variable_length" }
+
+[dev-dependencies]
+trybuild = "1.0.54"

@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use syn::{DeriveInput, Ident, parse_macro_input, Data, Fields, Field, Attribute, Type, Visibility};
+use syn::{DeriveInput, Ident, Data, Fields, Field, Attribute, Type, Visibility};
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
 use syn::spanned::Spanned;
@@ -9,19 +9,32 @@ use convert_case::{Case, Casing};
 
 #[proc_macro_attribute]
 pub fn define_varlen(attrs: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    match define_varlen_impl(attrs.into(), parse_macro_input!(item)) {
+    let attrs: proc_macro2::TokenStream = attrs.into();
+    let item: proc_macro2::TokenStream = item.into();
+    match define_varlen_impl(attrs.clone(), item.clone()) {
         Ok(x) => {
             x
         },
-        Err(Error(msg, span)) => quote_spanned!(span => 
-            ::core::compile_error!(#msg)
-        ),
+        Err(Error(msg, span)) => {
+            let error = quote_spanned!(span => 
+                ::core::compile_error!(#msg);
+            );
+            quote!( 
+                #attrs
+                #item
+                #error
+            )
+        },
     }.into()
 }
 
 struct Error(&'static str, proc_macro2::Span);
 
-fn define_varlen_impl(ty_attrs: TokenStream, d: DeriveInput) -> Result<TokenStream, Error> {
+fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStream, Error> {
+    let d: DeriveInput = match syn::parse2(d) {
+        Ok(d) => d,
+        Err(e) => return Err(Error("define_varlen could not parse this as a struct", e.span())),
+    };
     let d_attrs = d.attrs;
     let fields = 
         if let Data::Struct(s) = d.data {
@@ -61,7 +74,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: DeriveInput) -> Result<TokenStre
             uninit_idents: varlen_uninit_ident,
             len_idents: varlen_len_ident,
             elem_tys: varlen_elem_ty,
-            len_exprs: varlen_len_expr,
+            len_fns: varlen_len_fn,
             ty_params: varlen_ty_param    
         },
     } = parse_fields(fields)?;
@@ -119,6 +132,8 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: DeriveInput) -> Result<TokenStre
 
     Ok(quote! {
         #tyvis mod #mod_name {
+            use super::*;
+
             /// Array offsets and lengths for all trailing arrays.
             pub(super) struct Offsets {
                 #(
@@ -140,10 +155,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: DeriveInput) -> Result<TokenStre
 
             impl Header {
                 #(
-                    #[inline(always)]
-                    pub(super) const fn #varlen_len_ident(&self) -> usize {
-                        #varlen_len_expr
-                    }
+                    #varlen_len_fn
                 )*
 
                 #[inline]
@@ -171,7 +183,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: DeriveInput) -> Result<TokenStre
                     #(
                         let offset = ::variable_length::macro_support::round_array_fast::<#varlen_elem_ty>(offset);
                         let #varlen_ident = offset;
-                        let #varlen_len_ident = #varlen_len_expr;
+                        let #varlen_len_ident = self.#varlen_len_ident();
                         let offset = offset.wrapping_add(#varlen_len_ident);
                     )*
                     Offsets{
@@ -464,7 +476,7 @@ struct VarLenFields {
     uninit_idents: Vec<Ident>,
     len_idents: Vec<Ident>,
     elem_tys: Vec<Type>,
-    len_exprs: Vec<TokenStream>,
+    len_fns: Vec<TokenStream>,
     ty_params: Vec<Ident>,
 }
 
@@ -479,7 +491,7 @@ impl VarLenFields {
             uninit_idents: Vec::new(),
             len_idents: Vec::new(),
             elem_tys: Vec::new(),
-            len_exprs: Vec::new(),
+            len_fns: Vec::new(),
             ty_params: Vec::new(),
         }
     }
@@ -493,7 +505,7 @@ impl VarLenFields {
         self.vis_inner.push(vis_inner);
         self.mut_idents.push(format_ident!("{}_mut", f.ident.as_ref().unwrap()));
         self.uninit_idents.push(format_ident!("{}_uninit", f.ident.as_ref().unwrap()));
-        self.len_idents.push(format_ident!("{}_len", f.ident.as_ref().unwrap()));
+        let len_ident = format_ident!("{}_len", f.ident.as_ref().unwrap());
         self.ty_params.push(format_ident!("Init{}", f.ident.as_ref().unwrap().to_string().to_case(Case::UpperCamel)));
         self.idents.push(f.ident.unwrap());
         let (elem_ty, len_expr) = match f.ty {
@@ -507,7 +519,16 @@ impl VarLenFields {
                     f.ty.span())),
         };
         self.elem_tys.push(elem_ty);
-        self.len_exprs.push(len_expr);
+        let len_span = len_expr.span();
+        self.len_fns.push(
+            quote_spanned!(len_span=>
+                #[inline(always)]
+                pub(super) const fn #len_ident(&self) -> usize {
+                    #len_expr
+                }
+            ));
+        self.len_idents.push(len_ident);
+
         Ok(())
     }
 }
