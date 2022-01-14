@@ -1,4 +1,4 @@
-use super::Initializer;
+use super::ArrayInitializer;
 use core::ptr::NonNull;
 use core::mem::MaybeUninit;
 
@@ -9,7 +9,7 @@ unsafe fn as_uninit_slice_mut<'a, T>(p: NonNull<[T]>) -> &'a mut [MaybeUninit<T>
 
 pub struct FillSequentially<Lambda>(pub Lambda);
 
-unsafe impl<T, Lambda: FnMut(usize) -> T> Initializer<[T]> for FillSequentially<Lambda> {
+unsafe impl<T, Lambda: FnMut(usize) -> T> ArrayInitializer<T> for FillSequentially<Lambda> {
     unsafe fn initialize(mut self, dst: NonNull<[T]>) {
         let dst= as_uninit_slice_mut(dst);
         for (i, slot) in dst.iter_mut().enumerate() {
@@ -20,7 +20,7 @@ unsafe impl<T, Lambda: FnMut(usize) -> T> Initializer<[T]> for FillSequentially<
 
 pub struct FillWithDefault();
 
-unsafe impl<T: Default> Initializer<[T]> for FillWithDefault {
+unsafe impl<T: Default> ArrayInitializer<T> for FillWithDefault {
     unsafe fn initialize(self, dst: NonNull<[T]>) {
         FillSequentially(|_i| Default::default()).initialize(dst)
     }
@@ -28,7 +28,7 @@ unsafe impl<T: Default> Initializer<[T]> for FillWithDefault {
 
 pub struct CopyFrom<'a, T>(pub &'a [T]);
 
-unsafe impl<'a, T: Copy> Initializer<[T]> for CopyFrom<'a, T> {
+unsafe impl<'a, T: Copy> ArrayInitializer<T> for CopyFrom<'a, T> {
     unsafe fn initialize(self, dst: NonNull<[T]>) {
         // TODO(reinerp): Use MaybeUninit::write_slice once it stabilizes.
         let dst = as_uninit_slice_mut(dst);
@@ -40,7 +40,7 @@ unsafe impl<'a, T: Copy> Initializer<[T]> for CopyFrom<'a, T> {
 
 pub struct CloneFrom<'a, T>(pub &'a [T]);
 
-unsafe impl<'a, T: Clone> Initializer<[T]> for CloneFrom<'a, T> {
+unsafe impl<'a, T: Clone> ArrayInitializer<T> for CloneFrom<'a, T> {
     unsafe fn initialize(self, dst: NonNull<[T]>) {
         assert_eq!(self.0.len(), as_uninit_slice_mut(dst).len());
         FillSequentially(|i| (&self.0[i] as &T).clone()).initialize(dst)
@@ -49,7 +49,7 @@ unsafe impl<'a, T: Clone> Initializer<[T]> for CloneFrom<'a, T> {
 
 pub struct MoveFrom<T, const N: usize>(pub [T; N]);
 
-unsafe impl<T, const N: usize> Initializer<[T]> for MoveFrom<T, N> {
+unsafe impl<T, const N: usize> ArrayInitializer<T> for MoveFrom<T, N> {
     unsafe fn initialize(self, dst: NonNull<[T]>) {
         assert_eq!(as_uninit_slice_mut(dst).len(), N);
         core::ptr::write(dst.cast::<[T; N]>().as_ptr(), self.0)

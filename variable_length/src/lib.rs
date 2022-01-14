@@ -25,15 +25,16 @@ pub trait VarLen {
 
 /// Trait implementor promises:
 ///  * casting dst to Pin<&mut T> after calling initialize yields a valid reference.
-pub unsafe trait Initializer<T: ?Sized> {
-    unsafe fn initialize(self, dst: NonNull<T>);
+pub unsafe trait ArrayInitializer<T> {
+    unsafe fn initialize(self, dst: NonNull<[T]>);
 }
 
 /// Trait implementor promises:
 ///  * 'layout' is correct for the writes in 'initialize'
 ///  * after 'initialize', the 'VarLen::layout' matches the 'SizedInitializer::layout'.
-pub unsafe trait SizedInitializer<T: ?Sized>: Initializer<T> {
-    fn size(&self) -> Option<usize>;
+pub unsafe trait VarLenInitializer<T> {
+    fn required_size(&self) -> Option<usize>;
+    unsafe fn initialize(self, dst: NonNull<T>);
 }
 
 // Things I want to support:

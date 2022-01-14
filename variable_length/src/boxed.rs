@@ -1,4 +1,4 @@
-use super::{DropTailFn, SizedInitializer, VarLen};
+use super::{DropTailFn, VarLenInitializer, VarLen};
 
 use core::alloc::Layout;
 use core::ptr::NonNull;
@@ -14,8 +14,8 @@ fn allocation_overflow() -> ! {
 }
 
 impl<T: VarLen> Box<T> {
-    pub fn new(init: impl SizedInitializer<T>) -> Self {
-        let size = init.size().unwrap_or_else(|| allocation_overflow());
+    pub fn new(init: impl VarLenInitializer<T>) -> Self {
+        let size = init.required_size().unwrap_or_else(|| allocation_overflow());
         let layout = Layout::from_size_align(size, T::ALIGN).unwrap_or_else(|_| allocation_overflow());
         unsafe {
             let p = std::alloc::alloc(layout) as *mut T;
@@ -37,7 +37,7 @@ impl<T: VarLen> Box<T> {
         result
     }
 
-    // Safety: must have been a validly produced `*mut T`, either by a `SizedInitializer` call
+    // Safety: must have been a validly produced `*mut T`, either by a `VarLenInitializer` call
     // or similar.
     pub unsafe fn from_raw(raw: *mut T) -> Self {
         Box(NonNull::new_unchecked(raw))

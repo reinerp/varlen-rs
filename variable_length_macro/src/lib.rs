@@ -281,13 +281,14 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             
             type DropTailFn = #mod_name::DropTailFn;
 
+            #[inline]
             fn prepare_drop_tail(&self) -> Self::DropTailFn {
                 #mod_name::DropTailFn(self.header.offsets())
             }
         }
 
-        unsafe impl< #( #varlen_ty_param: ::variable_length::Initializer<[#varlen_elem_ty]>, )* 
-        > ::variable_length::Initializer<#tyname> for #mod_name::Init< #( #varlen_ty_param, )* > {
+        unsafe impl< #( #varlen_ty_param: ::variable_length::ArrayInitializer<#varlen_elem_ty>, )* 
+        > ::variable_length::VarLenInitializer<#tyname> for #mod_name::Init< #( #varlen_ty_param, )* > {
             unsafe fn initialize(self, dst: ::core::ptr::NonNull<#tyname>) {
                 let offsets = self.header.offsets();
                 let p = dst.cast::<u8>();
@@ -310,12 +311,9 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 };
                 ::core::ptr::write(dst.as_ptr(), written_header);
             }
-        }
 
-        unsafe impl< #( #varlen_ty_param: ::variable_length::Initializer<[#varlen_elem_ty]>, )* 
-        > ::variable_length::SizedInitializer<#tyname> for #mod_name::Init< #( #varlen_ty_param, )* > {
             #[inline]
-            fn size(&self) -> ::core::option::Option<usize> {
+            fn required_size(&self) -> ::core::option::Option<usize> {
                 self.header.size_cautious()
             }
         }

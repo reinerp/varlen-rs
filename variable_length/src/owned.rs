@@ -1,4 +1,4 @@
-use crate::{Initializer};
+use crate::VarLenInitializer;
 
 use super::{DropTailFn, VarLen};
 
@@ -63,7 +63,7 @@ impl<T: VarLen> core::ops::Deref for Owned<'_, T> {
     }
 }
 
-unsafe impl<T: VarLen> Initializer<T> for Owned<'_, T> {
+unsafe impl<T: VarLen> VarLenInitializer<T> for Owned<'_, T> {
     unsafe fn initialize(self, dst: NonNull<T>) {
         // Safety:
         //  * Owned has unique access to its pointer
@@ -72,10 +72,8 @@ unsafe impl<T: VarLen> Initializer<T> for Owned<'_, T> {
         core::ptr::copy_nonoverlapping(self.0.as_ptr(), dst.as_ptr(), self.size());
         core::mem::forget(self);
     }
-}
 
-unsafe impl<T: VarLen> crate::SizedInitializer<T> for Owned<'_, T> {
-    fn size(&self) -> Option<usize> {
-        Some(VarLen::size(&**self))
+    fn required_size(&self) -> Option<usize> {
+        Some(self.size())
     }
 }

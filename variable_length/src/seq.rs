@@ -1,5 +1,5 @@
 use core::alloc::Layout;
-use crate::VarLen;
+use crate::{VarLen, VarLenInitializer};
 use crate::owned::Owned;
 use core::ptr::NonNull;
 use core::pin::Pin;
@@ -73,13 +73,13 @@ impl<T: VarLen> Seq<T> {
 
     /// Adds an element to the sequence.
     #[inline]
-    pub fn push(&mut self, init: impl crate::SizedInitializer<T>) {
+    pub fn push(&mut self, init: impl VarLenInitializer<T>) {
         self.try_push(init).unwrap_or_else(|_| layout_overflow())
     }
 
     #[inline]
-    fn try_push(&mut self, init: impl crate::SizedInitializer<T>) -> Result<(), OverflowError> {
-        let size = init.size().ok_or(OverflowError)?;
+    fn try_push(&mut self, init: impl VarLenInitializer<T>) -> Result<(), OverflowError> {
+        let size = init.required_size().ok_or(OverflowError)?;
         let occupied_plus = self.occupied_bytes.checked_add(size).ok_or(OverflowError)?;
         if occupied_plus > self.capacity_bytes {
             let (ptr, capacity) = must_realloc(self.ptr.cast(), self.capacity_bytes, occupied_plus, T::ALIGN);
@@ -152,7 +152,7 @@ impl<T: VarLen> Drop for Seq<T> {
     }
 }
 
-impl<T: VarLen, Init: crate::SizedInitializer<T>> Extend<Init> for Seq<T> {
+impl<T: VarLen, Init: VarLenInitializer<T>> Extend<Init> for Seq<T> {
     fn extend<I>(&mut self, iter: I) where I: IntoIterator<Item = Init> {
         for init in iter {
             self.push(init);
@@ -160,7 +160,7 @@ impl<T: VarLen, Init: crate::SizedInitializer<T>> Extend<Init> for Seq<T> {
     }
 }
 
-impl<T: VarLen, Init: crate::SizedInitializer<T>> FromIterator<Init> for Seq<T> {
+impl<T: VarLen, Init: VarLenInitializer<T>> FromIterator<Init> for Seq<T> {
     fn from_iter<I>(iter: I) -> Self where I: IntoIterator<Item = Init> {
         let mut seq = Seq::new();
         seq.extend(iter);
