@@ -1,0 +1,16 @@
+[package]
+name = "variable_length_macro"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+syn = { version = "1.0.85", features = ["derive", "parsing", "extra-traits"] }
+quote = "1.0.14"
+lazy_static = "1.4.0"
+proc-macro2 = "1.0.36"
+convert_case = "0.5.0"

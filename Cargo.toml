@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+  "variable_length",
+  "variable_length_macro",
+  "variable_length_test",
+]
