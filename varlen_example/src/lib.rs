@@ -1,4 +1,4 @@
-use variable_length::define_varlen;
+use varlen::define_varlen;
 
 #[define_varlen]
 /// This struct contains two lengths and three arrays.
@@ -53,9 +53,9 @@ pub struct CoolStructWithMutableFields {
 
 #[cfg(test)]
 mod tests {
-    use variable_length::define_varlen;
-    use variable_length::boxed::Box;
-    use variable_length::init::FillSequentially;
+    use varlen::define_varlen;
+    use varlen::boxed::Box;
+    use varlen::init::FillSequentially;
 
     #[define_varlen]
     struct T {

@@ -9,6 +9,8 @@ error: cannot find attribute `varlen` in this scope
    |
 33 |     #[varlen]
    |       ^^^^^^
+   |
+   = note: `varlen` is in scope, but it is a crate, not an attribute
 
 error[E0412]: cannot find type `UndefinedType1` in this scope
  --> shouldfail/bad_type.rs:6:22

@@ -51,6 +51,8 @@ error: cannot find attribute `varlen` in this scope
    |
 28 |     #[varlen] #[header]
    |       ^^^^^^
+   |
+   = note: `varlen` is in scope, but it is a crate, not an attribute
 
 error: cannot find attribute `header` in this scope
   --> shouldfail/unsupported_syntax.rs:28:17
@@ -63,3 +65,5 @@ error: cannot find attribute `varlen` in this scope
    |
 22 |     #[varlen]
    |       ^^^^^^
+   |
+   = note: `varlen` is in scope, but it is a crate, not an attribute

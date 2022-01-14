@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-  "variable_length",
-  "variable_length_macro",
-  "variable_length_example",
+  "varlen",
+  "varlen_macro",
+  "varlen_example",
 ]

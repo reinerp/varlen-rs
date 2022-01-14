@@ -162,7 +162,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 pub(super) const fn size_cautious(&self) -> ::core::option::Option<usize> {
                     let size = ::core::option::Option::Some(::core::mem::size_of::<super::#tyname>());
                     #(
-                        let size = ::variable_length::macro_support::cat_array_cautious::<#varlen_elem_ty>(size, self.#varlen_len_ident());
+                        let size = ::varlen::macro_support::cat_array_cautious::<#varlen_elem_ty>(size, self.#varlen_len_ident());
                     )*
                     size
                 }
@@ -171,7 +171,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 pub(super) const unsafe fn size_fast(&self) -> usize {
                     let size = ::core::mem::size_of::<super::#tyname>();
                     #(
-                        let size = ::variable_length::macro_support::cat_array_fast::<#varlen_elem_ty>(size, self.#varlen_len_ident());
+                        let size = ::varlen::macro_support::cat_array_fast::<#varlen_elem_ty>(size, self.#varlen_len_ident());
                     )*
                     size
                 }
@@ -181,7 +181,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                     let offset = ::core::mem::size_of::<super::#tyname>();
                     // Initialize varlen fields first, because they require references to the header fields.
                     #(
-                        let offset = ::variable_length::macro_support::round_array_fast::<#varlen_elem_ty>(offset);
+                        let offset = ::varlen::macro_support::round_array_fast::<#varlen_elem_ty>(offset);
                         let #varlen_ident = offset;
                         let #varlen_len_ident = self.#varlen_len_ident();
                         let offset = offset.wrapping_add(#varlen_len_ident);
@@ -224,11 +224,11 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             /// Implementation for dropping the tail.
             #tyvis_inner struct DropTailFn(pub(super) Offsets);
             
-            impl ::variable_length::DropTailFn<super::#tyname> for DropTailFn {
+            impl ::varlen::DropTailFn<super::#tyname> for DropTailFn {
                 unsafe fn drop_tail(self, mut p: ::core::pin::Pin<&mut super::#tyname>) {
                     #(
                         ::core::ptr::drop_in_place(
-                            ::variable_length::macro_support::slice_mut_ref(p.as_mut(), self.0.#varlen_ident, self.0.#varlen_len_ident) as *mut [#varlen_elem_ty]
+                            ::varlen::macro_support::slice_mut_ref(p.as_mut(), self.0.#varlen_ident, self.0.#varlen_len_ident) as *mut [#varlen_elem_ty]
                         );
                     )*
                 }
@@ -245,11 +245,11 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             )*
             #(
                 #varlen_attr
-                #varlen_vis #varlen_ident: ::variable_length::VarLenField<[#varlen_elem_ty]>,
+                #varlen_vis #varlen_ident: ::varlen::VarLenField<[#varlen_elem_ty]>,
             )*
         }
 
-        unsafe impl ::variable_length::VarLen for #tyname {
+        unsafe impl ::varlen::VarLen for #tyname {
             // TODO(reinerp): Need a strategy to avoid things like core::mem::size_of_val(self),
             // which would be different if 'self' takes different types. That could lead to unsafety.
             //
@@ -264,7 +264,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 unsafe { self.header.size_fast() }
             }
 
-            const ALIGN: usize = ::variable_length::macro_support::array_max(
+            const ALIGN: usize = ::varlen::macro_support::array_max(
                 &[
                     ::core::mem::align_of::<Self>(),
                     #(
@@ -287,14 +287,14 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             }
         }
 
-        unsafe impl< #( #varlen_ty_param: ::variable_length::ArrayInitializer<#varlen_elem_ty>, )* 
-        > ::variable_length::VarLenInitializer<#tyname> for #mod_name::Init< #( #varlen_ty_param, )* > {
+        unsafe impl< #( #varlen_ty_param: ::varlen::ArrayInitializer<#varlen_elem_ty>, )* 
+        > ::varlen::VarLenInitializer<#tyname> for #mod_name::Init< #( #varlen_ty_param, )* > {
             unsafe fn initialize(self, dst: ::core::ptr::NonNull<#tyname>) {
                 let offsets = self.header.offsets();
                 let p = dst.cast::<u8>();
                 // Initialize varlen fields first, because they require references to the header fields.
                 #(
-                    self.#varlen_ident.initialize(::variable_length::macro_support::slice_ptr::<#varlen_elem_ty>(
+                    self.#varlen_ident.initialize(::varlen::macro_support::slice_ptr::<#varlen_elem_ty>(
                         p, offsets.#varlen_ident, offsets.#varlen_len_ident));
                 )*
 
@@ -306,7 +306,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                         mut_fields: self.mut_fields,
                     )*
                     #(
-                        #varlen_ident: ::variable_length::VarLenField::new_unchecked(),
+                        #varlen_ident: ::varlen::VarLenField::new_unchecked(),
                     )*
                 };
                 ::core::ptr::write(dst.as_ptr(), written_header);
@@ -324,7 +324,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 let offsets = self.header.offsets();
                 unsafe {
                     #(
-                        let #varlen_ident = ::variable_length::macro_support::slice_mut_ref_split(self.as_mut(), offsets.#varlen_ident, offsets.#varlen_len_ident);
+                        let #varlen_ident = ::varlen::macro_support::slice_mut_ref_split(self.as_mut(), offsets.#varlen_ident, offsets.#varlen_len_ident);
                     )*
                     let m = self.get_unchecked_mut();
                     #mod_name::MutRef {
@@ -355,21 +355,21 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 #[inline(always)]
                 #varlen_vis fn #varlen_ident(&self) -> &[#varlen_elem_ty] {
                     let offsets = self.header.offsets();
-                    unsafe { ::variable_length::macro_support::slice_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
+                    unsafe { ::varlen::macro_support::slice_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
                 }
 
                 #varlen_attr
                 #[inline(always)]
                 #varlen_vis fn #varlen_mut_ident(self: ::core::pin::Pin<&mut Self>) -> &mut [#varlen_elem_ty] {
                     let offsets = self.as_ref().header.offsets();
-                    unsafe { ::variable_length::macro_support::slice_mut_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
+                    unsafe { ::varlen::macro_support::slice_mut_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
                 }
 
                 #varlen_attr
                 #[inline(always)]
                 #varlen_vis fn #varlen_uninit_ident(self: ::core::pin::Pin<&mut Self>) -> &mut [::core::mem::MaybeUninit<#varlen_elem_ty>] {
                     let offsets = self.as_ref().header.offsets();
-                    unsafe { ::variable_length::macro_support::slice_mut_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
+                    unsafe { ::varlen::macro_support::slice_mut_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
                 }
             )*
         }

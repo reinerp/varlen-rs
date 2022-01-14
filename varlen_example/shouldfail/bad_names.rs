@@ -1,4 +1,4 @@
-use variable_length::define_varlen;
+use varlen::define_varlen;
 
 #[define_varlen]
 struct StructWithBadNames  {

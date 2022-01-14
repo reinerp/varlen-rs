@@ -17,7 +17,7 @@
 //! is by the `#[define_varlen]` macro, for example:
 //! 
 //! ```
-//! use variable_length::define_varlen;
+//! use varlen::define_varlen;
 //! #[define_varlen]
 //! struct CoolVarLen {
 //!   #[header]
@@ -62,10 +62,10 @@
 //! an initializer, so the example also shows using `Box` to push onto a `Seq`.
 //! 
 //! ```
-//! use variable_length::boxed::Box as VBox;
-//! use variable_length::init::{FillWithDefault, FillSequentially};
-//! use variable_length::seq::Seq;
-//! # use variable_length::define_varlen;
+//! use varlen::boxed::Box as VBox;
+//! use varlen::init::{FillWithDefault, FillSequentially};
+//! use varlen::seq::Seq;
+//! # use varlen::define_varlen;
 //! # #[define_varlen]
 //! # struct CoolVarLen {
 //! #   #[header]
@@ -106,7 +106,7 @@ pub mod seq;
 #[cfg(test)]
 mod test_type;
 
-pub use variable_length_macro::define_varlen;
+pub use varlen_macro::define_varlen;
 use core::ptr::NonNull;
 
 /// Trait describing variable-length types.
@@ -150,7 +150,7 @@ pub unsafe trait VarLenInitializer<T> {
 /// in this struct. By desing, nn object of type `VarLenField` cannot be directly 
 /// constructed within safe code; instead, you must construct the struct around it,
 /// using one of the safe variable-length-struct initialization methods such as 
-/// `variable_length::boxed::Box::new`.
+/// `varlen::boxed::Box::new`.
 pub struct VarLenField<T: ?Sized>(core::marker::PhantomPinned, core::marker::PhantomData<T>);
 
 impl<T: ?Sized> VarLenField<T> {

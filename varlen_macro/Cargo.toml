@@ -1,5 +1,5 @@
 [package]
-name = "variable_length_macro"
+name = "varlen_macro"
 version = "0.1.0"
 edition = "2021"
 

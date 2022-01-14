@@ -1,4 +1,4 @@
-use variable_length::define_varlen;
+use varlen::define_varlen;
 
 const MY_CONST: usize = 4;
 
