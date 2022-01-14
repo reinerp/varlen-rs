@@ -116,3 +116,4 @@ pub unsafe fn slice_ref<T, U>(base: &T, offset: usize, len: usize) -> &[U] {
 pub unsafe fn slice_mut_ref<T, U>(base: Pin<&mut T>, offset: usize, len: usize) -> &mut [U] {
     core::slice::from_raw_parts_mut((base.get_unchecked_mut() as *mut T as *mut u8).wrapping_add(offset) as *mut U, len)
 }
+

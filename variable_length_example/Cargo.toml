@@ -1,10 +1,9 @@
 [package]
-name = "variable_length_test"
+name = "variable_length_example"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dev-dependencies]
-variable_length_macro = { version = "0.1", path = "../variable_length_macro" }
+[dependencies]
 variable_length = { version = "0.1", path = "../variable_length" }

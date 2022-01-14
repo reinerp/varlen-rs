@@ -8,8 +8,10 @@ use quote::{quote, quote_spanned, format_ident};
 use convert_case::{Case, Casing};
 
 #[proc_macro_attribute]
-pub fn define_varlen(_attrs: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn define_varlen(ty_attrs: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ty_attrs = TokenStream::from(ty_attrs);
     let d: DeriveInput = parse_macro_input!(item);
+    let d_attrs = d.attrs;
     let fields = match d.data {
         Data::Struct(s) => match s.fields {
             Fields::Named(n) => n.named,
@@ -37,6 +39,8 @@ pub fn define_varlen(_attrs: proc_macro::TokenStream, item: proc_macro::TokenStr
         fields.into_pairs().partition(|p| has_varlen(p.value()));
     
     let (header_attr, header_vis, header_idents, header_tys) = parse_header_fields(&header_fields);
+    let headerty_vis =  max_visibility(header_vis.iter());
+    let headerty_vis_inner = lift_field_vis(&headerty_vis);
 
     let VarLenFields{
         attrs: varlen_attr,
@@ -59,45 +63,38 @@ pub fn define_varlen(_attrs: proc_macro::TokenStream, item: proc_macro::TokenStr
 
     let mut pub_mod_name = format_ident!("{}", tyname.to_string().to_case(Case::Snake));
     pub_mod_name.set_span(proc_macro2::Span::call_site());
-    // TODO(reinerp): use Span::def_site() once stable.
-    let hidden_mod_name = format_ident!("priv_mod_varlen_{}", &pub_mod_name);
 
     quote! {
         #tyvis mod #pub_mod_name {
-            #tyvis_inner struct Header {
+            /// Array offsets and lengths for all trailing arrays.
+            pub(super) struct Offsets {
+                #(
+                    pub(super) #varlen_ident: usize,
+                    pub(super) #varlen_len_ident: usize,
+                )*
+            }
+
+            /// Header fields.
+            /// 
+            /// These are the fields that can influence the trailing array lengths, and which
+            /// therefore must remain constant once the array is allocated.
+            #headerty_vis_inner struct Header {
                 #(
                     #header_attr
                     #header_vis #header_idents: #header_tys,
                 )*
             }
 
-            #tyvis_inner struct Init< #(#varlen_ty_param,)* > {
-                pub header: Header,
-                #(
-                    #varlen_attr
-                    #varlen_vis #varlen_ident: #varlen_ty_param,
-                )*
-            }
-        }
-
-        mod #hidden_mod_name {
-            struct Offsets {
-                #(
-                    #varlen_ident: usize,
-                    #varlen_len_ident: usize,
-                )*
-            }
-
-            impl super::#pub_mod_name::Header {
+            impl Header {
                 #(
                     #[inline(always)]
-                    const fn #varlen_len_ident(&self) -> usize {
+                    pub(super) const fn #varlen_len_ident(&self) -> usize {
                         #varlen_len_expr
                     }
                 )*
 
                 #[inline]
-                const fn layout_cautious(&self) -> ::core::option::Option<::core::alloc::Layout> {
+                pub(super) const fn layout_cautious(&self) -> ::core::option::Option<::core::alloc::Layout> {
                     let layout = ::variable_length::macro_support::layout_of::<Self>();
                     #(
                         let layout = ::variable_length::macro_support::cat_array_cautious::<#varlen_elem_ty>(layout, self.#varlen_len_ident());
@@ -106,7 +103,7 @@ pub fn define_varlen(_attrs: proc_macro::TokenStream, item: proc_macro::TokenStr
                 }
 
                 #[inline]
-                const unsafe fn layout_fast(&self) -> ::core::alloc::Layout {
+                pub(super) const unsafe fn layout_fast(&self) -> ::core::alloc::Layout {
                     let layout = ::variable_length::macro_support::raw_layout_of::<Self>();
                     #(
                         let layout = ::variable_length::macro_support::cat_array_fast::<#varlen_elem_ty>(layout, self.#varlen_len_ident());
@@ -115,8 +112,8 @@ pub fn define_varlen(_attrs: proc_macro::TokenStream, item: proc_macro::TokenStr
                 }
 
                 #[inline(always)]
-                const fn offsets(&self) -> Offsets {
-                    let offset = ::core::mem::size_of::<#tyname>();
+                pub(super) const fn offsets(&self) -> Offsets {
+                    let offset = ::core::mem::size_of::<super::#tyname>();
                     // Initialize varlen fields first, because they require references to the header fields.
                     #(
                         let offset = ::variable_length::macro_support::round_array_fast::<#varlen_elem_ty>(offset);
@@ -130,10 +127,19 @@ pub fn define_varlen(_attrs: proc_macro::TokenStream, item: proc_macro::TokenStr
                 }
             }
 
-            pub(super) struct DropTailFn(Offsets);
+            #tyvis_inner struct Init< #(#varlen_ty_param,)* > {
+                pub header: Header,
+                #(
+                    #varlen_attr
+                    #varlen_vis #varlen_ident: #varlen_ty_param,
+                )*
+            }
+
+            /// Implementation for dropping the tail.
+            #tyvis_inner struct DropTailFn(pub(super) Offsets);
             
-            impl ::variable_length::DropTailFn<#tyname> for DropTailFn {
-                unsafe fn drop_tail(self, mut p: ::core::pin::Pin<&mut #tyname>) {
+            impl ::variable_length::DropTailFn<super::#tyname> for DropTailFn {
+                unsafe fn drop_tail(self, mut p: ::core::pin::Pin<&mut super::#tyname>) {
                     #(
                         ::core::ptr::drop_in_place(
                             ::variable_length::macro_support::slice_mut_ref(p.as_mut(), self.0.#varlen_ident, self.0.#varlen_len_ident) as *mut [#varlen_elem_ty]
@@ -141,112 +147,102 @@ pub fn define_varlen(_attrs: proc_macro::TokenStream, item: proc_macro::TokenStr
                     )*
                 }
             }
+        }
 
-            pub(super) struct #tyname {
-                /* private */ header: super::#pub_mod_name::Header,
+        #ty_attrs
+        #(#d_attrs)*
+        #tyvis struct #tyname {
+            // TODO(reinerp): Restrict visibility of the header to the max visibility of its
+            // fields.
+            #headerty_vis header: #pub_mod_name::Header,
+            #(
+                #varlen_attr
+                #varlen_vis #varlen_ident: ::variable_length::VarLenField<[#varlen_elem_ty]>,
+            )*
+        }
+
+        impl ::variable_length::VarLen for #tyname {
+            // TODO(reinerp): Need a strategy to avoid things like core::mem::size_of_val(self),
+            // which would be different if 'self' takes different types. That could lead to unsafety.
+            //
+            // Possible solutions:
+            //  * always evaluate layout on the same type.
+            //    * could be 'header'. Need a way to construct header from Init type and main type.
+            //  * could evaluate without 'self' in scope. Reasonable idea! Instead, just have
+            //    field names in scope, as local variables. Actually I'm starting to really like this...
+            
+            #[inline]
+            fn layout(&self) -> ::core::alloc::Layout {
+                unsafe { self.header.layout_fast() }
+            }
+
+            const NEEDS_DROP_TAIL: bool = 
                 #(
-                    #varlen_attr
-                    /* private */ #varlen_ident: ::core::marker::PhantomData<[#varlen_elem_ty]>,
+                    ::core::mem::needs_drop::<#varlen_elem_ty>() ||
                 )*
-                unpin: ::core::marker::PhantomPinned,
-            }
+                false;
+            
+            type DropTailFn = #pub_mod_name::DropTailFn;
 
-            impl ::variable_length::VarLen for #tyname {
-                // TODO(reinerp): Need a strategy to avoid things like core::mem::size_of_val(self),
-                // which would be different if 'self' takes different types. That could lead to unsafety.
-                //
-                // Possible solutions:
-                //  * always evaluate layout on the same type.
-                //    * could be 'header'. Need a way to construct header from Init type and main type.
-                //  * could evaluate without 'self' in scope. Reasonable idea! Instead, just have
-                //    field names in scope, as local variables. Actually I'm starting to really like this...
-                
-                #[inline]
-                fn layout(&self) -> ::core::alloc::Layout {
-                    unsafe { self.header.layout_fast() }
-                }
-
-                const NEEDS_DROP_TAIL: bool = 
-                    #(
-                        ::core::mem::needs_drop::<#varlen_elem_ty>() ||
-                    )*
-                    false;
-                
-                type DropTailFn = DropTailFn;
-
-                fn prepare_drop_tail(&self) -> DropTailFn {
-                    DropTailFn(self.header().offsets())
-                }
-            }
-
-            unsafe impl< #( #varlen_ty_param: ::variable_length::Initializer<[#varlen_elem_ty]>, )* 
-            > ::variable_length::Initializer<#tyname> for super::#pub_mod_name::Init< #( #varlen_ty_param, )* > {
-                unsafe fn initialize(self, dst: ::core::ptr::NonNull<#tyname>) {
-                    let offsets = self.header.offsets();
-                    let p = dst.cast::<u8>();
-                    // Initialize varlen fields first, because they require references to the header fields.
-                    #(
-                        self.#varlen_ident.initialize(::variable_length::macro_support::slice_ptr::<#varlen_elem_ty>(
-                            p, offsets.#varlen_ident, offsets.#varlen_len_ident));
-                    )*
-
-                    // Initialize header fields, consuming them.
-                    let written_header = #tyname {
-                        header: self.header,
-                        #(
-                            #varlen_ident: ::core::marker::PhantomData,
-                        )*
-                        unpin: ::core::marker::PhantomPinned
-                    };
-                    ::core::ptr::write(dst.as_ptr(), written_header);
-                }
-            }
-
-            unsafe impl< #( #varlen_ty_param: ::variable_length::Initializer<[#varlen_elem_ty]>, )* 
-            > ::variable_length::SizedInitializer<#tyname> for super::#pub_mod_name::Init< #( #varlen_ty_param, )* > {
-                #[inline]
-                fn layout(&self) -> ::core::option::Option<::core::alloc::Layout> {
-                    self.header.layout_cautious()
-                }
-            }
-
-
-            impl #tyname {
-                /// Immutable access to header
-                #[inline(always)]
-                #tyvis_inner fn header(&self) -> &super::#pub_mod_name::Header {
-                    &self.header
-                }
-
-                #(
-                    // Immutable access to varlen fields
-                    #varlen_attr
-                    #[inline(always)]
-                    #varlen_vis fn #varlen_ident(&self) -> &[#varlen_elem_ty] {
-                        let offsets = self.header.offsets();
-                        unsafe { ::variable_length::macro_support::slice_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
-                    }
-
-                    // Mutable access to varlen fields
-                    #varlen_attr
-                    #[inline(always)]
-                    #varlen_vis fn #varlen_mut_ident(self: ::core::pin::Pin<&mut Self>) -> &mut [#varlen_elem_ty] {
-                        let offsets = self.as_ref().header.offsets();
-                        unsafe { ::variable_length::macro_support::slice_mut_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
-                    }
-
-                    // Uninitialized access to varlen fields
-                    #varlen_attr
-                    #[inline(always)]
-                    #varlen_vis fn #varlen_uninit_ident(self: ::core::pin::Pin<&mut Self>) -> &mut [::core::mem::MaybeUninit<#varlen_elem_ty>] {
-                        let offsets = self.as_ref().header.offsets();
-                        unsafe { ::variable_length::macro_support::slice_mut_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
-                    }
-                )*
+            fn prepare_drop_tail(&self) -> Self::DropTailFn {
+                #pub_mod_name::DropTailFn(self.header.offsets())
             }
         }
 
-        #tyvis type #tyname = #hidden_mod_name::#tyname;
+        unsafe impl< #( #varlen_ty_param: ::variable_length::Initializer<[#varlen_elem_ty]>, )* 
+        > ::variable_length::Initializer<#tyname> for #pub_mod_name::Init< #( #varlen_ty_param, )* > {
+            unsafe fn initialize(self, dst: ::core::ptr::NonNull<#tyname>) {
+                let offsets = self.header.offsets();
+                let p = dst.cast::<u8>();
+                // Initialize varlen fields first, because they require references to the header fields.
+                #(
+                    self.#varlen_ident.initialize(::variable_length::macro_support::slice_ptr::<#varlen_elem_ty>(
+                        p, offsets.#varlen_ident, offsets.#varlen_len_ident));
+                )*
+
+                // Initialize header fields, consuming them.
+                let written_header = #tyname {
+                    header: self.header,
+                    #(
+                        #varlen_ident: ::variable_length::VarLenField::new_unchecked(),
+                    )*
+                };
+                ::core::ptr::write(dst.as_ptr(), written_header);
+            }
+        }
+
+        unsafe impl< #( #varlen_ty_param: ::variable_length::Initializer<[#varlen_elem_ty]>, )* 
+        > ::variable_length::SizedInitializer<#tyname> for #pub_mod_name::Init< #( #varlen_ty_param, )* > {
+            #[inline]
+            fn layout(&self) -> ::core::option::Option<::core::alloc::Layout> {
+                self.header.layout_cautious()
+            }
+        }
+
+        impl #tyname {
+            #(
+                #varlen_attr
+                #[inline(always)]
+                #varlen_vis fn #varlen_ident(&self) -> &[#varlen_elem_ty] {
+                    let offsets = self.header.offsets();
+                    unsafe { ::variable_length::macro_support::slice_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
+                }
+
+                #varlen_attr
+                #[inline(always)]
+                #varlen_vis fn #varlen_mut_ident(self: ::core::pin::Pin<&mut Self>) -> &mut [#varlen_elem_ty] {
+                    let offsets = self.as_ref().header.offsets();
+                    unsafe { ::variable_length::macro_support::slice_mut_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
+                }
+
+                #varlen_attr
+                #[inline(always)]
+                #varlen_vis fn #varlen_uninit_ident(self: ::core::pin::Pin<&mut Self>) -> &mut [::core::mem::MaybeUninit<#varlen_elem_ty>] {
+                    let offsets = self.as_ref().header.offsets();
+                    unsafe { ::variable_length::macro_support::slice_mut_ref(self, offsets.#varlen_ident, offsets.#varlen_len_ident) }
+                }
+            )*
+        }
     }.into()
 }
 
@@ -295,7 +291,7 @@ fn parse_varlen_fields(varlen_fields: Punctuated<Field, Comma>) -> VarLenFields 
         let span = f.span();
         let f_attrs = f.attrs.into_iter().filter(|attr| attr != &varlen_attr);
         attrs.push(quote_spanned!{span=> #(#f_attrs)* });
-        vises.push(lift_field_vis(&f.vis));
+        vises.push(f.vis);
         mut_idents.push(format_ident!("{}_mut", f.ident.as_ref().unwrap()));
         uninit_idents.push(format_ident!("{}_uninit", f.ident.as_ref().unwrap()));
         len_idents.push(format_ident!("{}_len", f.ident.as_ref().unwrap()));
@@ -329,28 +325,38 @@ fn parse_varlen_fields(varlen_fields: Punctuated<Field, Comma>) -> VarLenFields 
 //     r
 // }
 
-// fn lt_visibility(a: &Visibility, b: &Visibility) -> bool {
-//     vis_rank(a) < vis_rank(b)
-// }
+fn max_visibility<'t>(b: impl Iterator<Item= &'t Visibility>) -> Visibility {
+    let mut r = Visibility::Inherited;
+    for v in b {
+        if lt_visibility(&r, v) {
+            r = v.clone();
+        }
+    }
+    r
+}
 
-// fn vis_rank(a: &Visibility) -> usize {
-//     match a {
-//         Visibility::Public(_) => 3,
-//         Visibility::Crate(_) => 2,
-//         Visibility::Restricted(r) => {
-//             if r.path.is_ident("crate") {
-//                 2
-//             } else if r.path.is_ident("super") {
-//                 1
-//             } else if r.path.is_ident("self") {
-//                 0
-//             } else {
-//                 panic!("Unexpected visibility; pub(in foo) is not supported")
-//             }
-//         },
-//         Visibility::Inherited => 0,
-//     }
-// }
+fn lt_visibility(a: &Visibility, b: &Visibility) -> bool {
+    vis_rank(a) < vis_rank(b)
+}
+
+fn vis_rank(a: &Visibility) -> usize {
+    match a {
+        Visibility::Public(_) => 3,
+        Visibility::Crate(_) => 2,
+        Visibility::Restricted(r) => {
+            if r.path.is_ident("crate") {
+                2
+            } else if r.path.is_ident("super") {
+                1
+            } else if r.path.is_ident("self") {
+                0
+            } else {
+                panic!("Unexpected visibility; pub(in foo) is not supported")
+            }
+        },
+        Visibility::Inherited => 0,
+    }
+}
 
 fn parse_header_fields(header_fields: &Punctuated<Field, Comma>) -> (Vec<TokenStream>, Vec<Visibility>, Vec<&Ident>, Vec<&Type>) {
     let mut attrs = Vec::new();

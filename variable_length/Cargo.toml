@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 variable_length_macro = { version = "0.1", path = "../variable_length_macro" }
+
+[features]
+example_generated = []

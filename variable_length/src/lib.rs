@@ -2,6 +2,7 @@
 pub mod macro_support;
 pub mod init;
 pub mod boxed;
+
 pub use variable_length_macro::define_varlen;
 use core::alloc::Layout;
 use core::ptr::NonNull;
@@ -38,3 +39,16 @@ pub unsafe trait SizedInitializer<T: ?Sized>: Initializer<T> {
 //  * allocate a Pin<&mut Foo> (bumpalo)
 //  * support other allocation strategies too, e.g. 32-bit allocation
 //    * what's the extensibility story for that?
+
+
+pub struct VarLenField<T: ?Sized>(core::marker::PhantomPinned, core::marker::PhantomData<T>);
+
+impl<T: ?Sized> VarLenField<T> {
+    /// The only way to construct a `VarLenField`.
+    /// 
+    /// Safety: when using this to construct a variable-length type, you must also allocate
+    /// and initialize the tail of the type.
+    pub unsafe fn new_unchecked() -> Self {
+        VarLenField(core::marker::PhantomPinned, core::marker::PhantomData)
+    }
+}
