@@ -1,8 +1,9 @@
 #[doc(hidden)]
 pub mod macro_support;
 pub mod init;
+pub mod owned;
 pub mod boxed;
-// pub mod seq;
+pub mod seq;
 
 pub use variable_length_macro::define_varlen;
 use core::ptr::NonNull;

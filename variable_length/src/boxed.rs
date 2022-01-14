@@ -8,6 +8,7 @@ use core::pin::Pin;
 pub struct Box<T: VarLen>(NonNull<T>);
 
 #[inline(never)]
+#[cold]
 fn allocation_overflow() -> ! {
     panic!("Allocation size overflow")
 }
@@ -31,7 +32,9 @@ impl<T: VarLen> Box<T> {
 
     // Safety: must not be used to produce a `&mut T`.
     pub unsafe fn into_raw(self) -> *mut T {
-        self.0.as_ptr()
+        let result = self.0.as_ptr();
+        core::mem::forget(self);
+        result
     }
 
     // Safety: must have been a validly produced `*mut T`, either by a `SizedInitializer` call
