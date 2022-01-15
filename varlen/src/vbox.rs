@@ -4,8 +4,8 @@ use core::alloc::Layout;
 use core::ptr::NonNull;
 use core::pin::Pin;
 
-/// Box<T>, but for VarLen types T.
-pub struct Box<T: VarLen>(NonNull<T>);
+/// [`Box<T>`], but for [`VarLen`] types T.
+pub struct VBox<T: VarLen>(NonNull<T>);
 
 #[inline(never)]
 #[cold]
@@ -13,7 +13,7 @@ fn allocation_overflow() -> ! {
     panic!("Allocation size overflow")
 }
 
-impl<T: VarLen> Box<T> {
+impl<T: VarLen> VBox<T> {
     pub fn new(init: impl VarLenInitializer<T>) -> Self {
         let size = init.required_size().unwrap_or_else(|| allocation_overflow());
         let layout = Layout::from_size_align(size, T::ALIGN).unwrap_or_else(|_| allocation_overflow());
@@ -22,7 +22,7 @@ impl<T: VarLen> Box<T> {
             init.initialize(NonNull::new_unchecked(p));
             let mut p=  NonNull::new_unchecked(p);
             debug_assert_eq!(p.as_mut().size(), size);
-            Box(p)
+            VBox(p)
         }
     }
 
@@ -40,11 +40,11 @@ impl<T: VarLen> Box<T> {
     // Safety: must have been a validly produced `*mut T`, either by a `VarLenInitializer` call
     // or similar.
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Box(NonNull::new_unchecked(raw))
+        VBox(NonNull::new_unchecked(raw))
     }
 }
 
-impl<T: VarLen> Drop for Box<T> {
+impl<T: VarLen> Drop for VBox<T> {
     fn drop(&mut self) {
         unsafe {
             // Careful sequencing of drop:
@@ -64,7 +64,7 @@ impl<T: VarLen> Drop for Box<T> {
     }
 }
 
-impl<T: VarLen> core::ops::Deref for Box<T> {
+impl<T: VarLen> core::ops::Deref for VBox<T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &T {
@@ -72,7 +72,7 @@ impl<T: VarLen> core::ops::Deref for Box<T> {
     }
 }
 
-unsafe impl<T: VarLen> VarLenInitializer<T> for Box<T> {
+unsafe impl<T: VarLen> VarLenInitializer<T> for VBox<T> {
     unsafe fn initialize(self, dst: NonNull<T>) {
         let size = self.size();
         let layout = Layout::from_size_align(size, T::ALIGN).unwrap_or_else(|_| allocation_overflow());

@@ -54,7 +54,7 @@ pub struct CoolStructWithMutableFields {
 #[cfg(test)]
 mod tests {
     use varlen::define_varlen;
-    use varlen::boxed::Box;
+    use varlen::vbox::VBox;
     use varlen::init::FillSequentially;
 
     #[define_varlen]
@@ -71,7 +71,7 @@ mod tests {
 
     #[test]
     fn field_access_and_modify() {
-        let mut b = Box::<T>::new(t::Init{
+        let mut b = VBox::<T>::new(t::Init{
             header: t::Header {
                 len: 4,
             },

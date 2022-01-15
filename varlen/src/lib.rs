@@ -62,7 +62,7 @@
 //! an initializer, so the example also shows using `Box` to push onto a `Seq`.
 //! 
 //! ```
-//! use varlen::boxed::Box as VBox;
+//! use varlen::vbox::VBox;
 //! use varlen::init::{FillWithDefault, FillSequentially};
 //! use varlen::seq::Seq;
 //! # use varlen::define_varlen;
@@ -100,7 +100,7 @@
 pub mod macro_support;
 pub mod init;
 pub mod owned;
-pub mod boxed;
+pub mod vbox;
 pub mod seq;
 
 #[cfg(test)]
