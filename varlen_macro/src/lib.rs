@@ -65,7 +65,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             idents: mut_ident,
             tys: mut_ty,
         },
-        varlen_fields: VarLenFields{
+        varlen_array_fields: VarLenArrayFields{
             attrs: varlen_attr,
             vis: varlen_vis,
             vis_inner: varlen_vis_inner,
@@ -474,7 +474,7 @@ impl NormalFields {
     }
 }
 
-struct VarLenFields {
+struct VarLenArrayFields {
     attrs: Vec<TokenStream>,
     vis: Vec<SimpleVisibility>,
     vis_inner: Vec<SimpleVisibility>,
@@ -487,9 +487,9 @@ struct VarLenFields {
     ty_params: Vec<Ident>,
 }
 
-impl VarLenFields {
+impl VarLenArrayFields {
     fn new() -> Self {
-        VarLenFields{
+        VarLenArrayFields{
             attrs: Vec::new(),
             vis: Vec::new(),
             vis_inner: Vec::new(),
@@ -522,7 +522,7 @@ impl VarLenFields {
             },
             _ => 
                 return Err(Error(
-                    "Fields annotated with #[varlen] must be of array type",
+                    "Fields annotated with #[varlen_array] must be of array type",
                     f.ty.span())),
         };
         self.elem_tys.push(elem_ty);
@@ -543,21 +543,22 @@ impl VarLenFields {
 struct FieldGroups {
     header_fields: NormalFields,
     mut_fields: NormalFields,
-    varlen_fields: VarLenFields,
+    varlen_array_fields: VarLenArrayFields,
 }
 
 fn parse_fields(fields: Punctuated<Field, Comma>) -> Result<FieldGroups, Error> {
-    let varlen_attr: Attribute = parse_quote!{ #[varlen] };
+    // let varlen_attr: Attribute = parse_quote!{ #[varlen] };
+    let varlen_array_attr: Attribute = parse_quote!{ #[varlen] };
     let header_attr: Attribute = parse_quote!{ #[header] };
 
     let mut header_fields = NormalFields::new();
     let mut mut_fields = NormalFields::new();
-    let mut varlen_fields = VarLenFields::new();
+    let mut varlen_fields = VarLenArrayFields::new();
     for mut f in fields {
         let mut varlen_span = None;
         let mut header_span = None;
         f.attrs.retain(|attr| {
-            if attr == &varlen_attr {
+            if attr == &varlen_array_attr {
                 varlen_span = Some(attr.span());
                 false
             } else if attr == &header_attr {
@@ -575,7 +576,7 @@ fn parse_fields(fields: Punctuated<Field, Comma>) -> Result<FieldGroups, Error> 
             (None, None) => mut_fields.push(f)?,
         }
     }
-    Ok(FieldGroups{header_fields, mut_fields, varlen_fields})
+    Ok(FieldGroups{header_fields, mut_fields, varlen_array_fields: varlen_fields})
 }
 
 // fn parse_varlen_fields(varlen_fields: Punctuated<Field, Comma>) -> VarLenFields {

@@ -91,6 +91,7 @@ impl<T: VarLen> Seq<T> {
             init.initialize(add_bytes_fast(self.ptr, self.occupied_bytes));
         }
         self.occupied_bytes = occupied_plus;
+        self.len_logical += 1;
         Ok(())
     }
 

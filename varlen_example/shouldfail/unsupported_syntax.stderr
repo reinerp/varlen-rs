@@ -28,7 +28,7 @@ error: Visibility must be one of: (none), pub, pub(crate), pub(self), pub(super)
 17 |     pub(in crate::foo::bar) x: u8,
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Fields annotated with #[varlen] must be of array type
+error: Fields annotated with #[varlen_array] must be of array type
   --> shouldfail/unsupported_syntax.rs:23:8
    |
 23 |     x: u8,

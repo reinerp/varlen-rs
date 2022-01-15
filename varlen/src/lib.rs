@@ -107,6 +107,9 @@ pub mod seq;
 mod test_type;
 
 pub use varlen_macro::define_varlen;
+pub use vbox::VBox;
+pub use owned::Owned;
+pub use seq::Seq;
 use core::ptr::NonNull;
 
 /// Trait describing variable-length types.

@@ -7,6 +7,17 @@ unsafe fn as_uninit_slice_mut<'a, T>(p: NonNull<[T]>) -> &'a mut [MaybeUninit<T>
     NonNull::new_unchecked(p.as_ptr() as *mut [MaybeUninit<T>]).as_mut()
 }
 
+pub struct FromIterPrefix<Iter>(pub Iter);
+
+unsafe impl<T, Iter: Iterator<Item=T>> ArrayInitializer<T> for FromIterPrefix<Iter> {
+    unsafe fn initialize(mut self, dst: NonNull<[T]>) {
+        let dst= as_uninit_slice_mut(dst);
+        for slot in dst.iter_mut() {
+            slot.write(self.0.next().unwrap());
+        }        
+    }
+}
+
 pub struct FillSequentially<Lambda>(pub Lambda);
 
 unsafe impl<T, Lambda: FnMut(usize) -> T> ArrayInitializer<T> for FillSequentially<Lambda> {
