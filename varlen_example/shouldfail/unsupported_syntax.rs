@@ -19,13 +19,13 @@ pub struct UnsupportedVisibility {
 
 #[define_varlen]
 pub struct NotAnArray {
-    #[varlen]
+    #[varlen_array]
     x: u8,
 }
 
 #[define_varlen]
 pub struct TooManyAttributes {
-    #[varlen] #[header]
+    #[varlen_array] #[header]
     x: [u8; 4],
 }
 

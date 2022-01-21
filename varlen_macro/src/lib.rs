@@ -548,7 +548,7 @@ struct FieldGroups {
 
 fn parse_fields(fields: Punctuated<Field, Comma>) -> Result<FieldGroups, Error> {
     // let varlen_attr: Attribute = parse_quote!{ #[varlen] };
-    let varlen_array_attr: Attribute = parse_quote!{ #[varlen] };
+    let varlen_array_attr: Attribute = parse_quote!{ #[varlen_array] };
     let header_attr: Attribute = parse_quote!{ #[header] };
 
     let mut header_fields = NormalFields::new();
@@ -570,7 +570,7 @@ fn parse_fields(fields: Punctuated<Field, Comma>) -> Result<FieldGroups, Error> 
         });
         match (varlen_span, header_span) {
             (Some(varlen_span), Some(_)) => return Err(
-                Error("Field must have at most one of #[varlen] and #[header] attributes", varlen_span)),
+                Error("Field must have at most one of #[varlen_array] and #[header] attributes", varlen_span)),
             (None, Some(_)) => header_fields.push(f)?,
             (Some(_), None) => varlen_fields.push(f)?,
             (None, None) => mut_fields.push(f)?,

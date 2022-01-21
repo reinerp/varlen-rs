@@ -4,13 +4,11 @@ error: cannot find attribute `header` in this scope
 28 |     #[header]
    |       ^^^^^^
 
-error: cannot find attribute `varlen` in this scope
+error: cannot find attribute `varlen_array` in this scope
   --> shouldfail/bad_type.rs:33:7
    |
-33 |     #[varlen]
-   |       ^^^^^^
-   |
-   = note: `varlen` is in scope, but it is a crate, not an attribute
+33 |     #[varlen_array]
+   |       ^^^^^^^^^^^^
 
 error[E0412]: cannot find type `UndefinedType1` in this scope
  --> shouldfail/bad_type.rs:6:22

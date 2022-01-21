@@ -13,16 +13,16 @@ struct S {
 
     not_a_header: u16,
 
-    #[varlen]
+    #[varlen_array]
     arr1: [u8; (&self) as *const _ as usize],
 
-    #[varlen]
+    #[varlen_array]
     arr2: [u8; next_rand()],
 
-    #[varlen]
+    #[varlen_array]
     arr3: [u8; MY_CONST],
 
-    #[varlen]
+    #[varlen_array]
     arr4: [u8; std::mem::transmute(&self) ]
 }
 

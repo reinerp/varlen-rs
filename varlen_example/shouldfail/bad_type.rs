@@ -7,7 +7,7 @@ struct StructWithUndefinedTypes  {
 
     mut_variable: UndefinedType2,
 
-    #[varlen]
+    #[varlen_array]
     arr: [UndefinedType3; 4usize],
 }
 
@@ -20,7 +20,7 @@ struct StructWithIllFormedTypes  {
 
     mut_variable: RequiresCopy<Vec<String>>,
 
-    #[varlen]
+    #[varlen_array]
     arr: [RequiresCopy<Vec<Vec<String>>>; 4usize],
 }
 
@@ -30,7 +30,7 @@ struct StructWithUnsizedTypes {
 
     mut_variable: [u16],
 
-    #[varlen]
+    #[varlen_array]
     arr: [[u32]; 4],
 }
 

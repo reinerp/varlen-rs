@@ -10,15 +10,15 @@ pub struct CoolStruct {
     #[header]
     pub big_len: usize,
 
-    #[varlen]
+    #[varlen_array]
     /// An array.
     pub arr1: [u8; self.small_len as usize],
 
-    #[varlen]
+    #[varlen_array]
     /// Another array.
     pub arr2: [u8; self.small_len as usize],
 
-    #[varlen]
+    #[varlen_array]
     /// A third array.
     pub arr3: [u16; self.big_len],
 }
@@ -38,15 +38,15 @@ pub struct CoolStructWithMutableFields {
     /// So can this.
     pub some_int: i16,
 
-    #[varlen]
+    #[varlen_array]
     /// An array.
     pub arr1: [u8; self.small_len as usize],
 
-    #[varlen]
+    #[varlen_array]
     /// Another array.
     pub arr2: [u8; self.small_len as usize],
 
-    #[varlen]
+    #[varlen_array]
     /// A third array.
     pub arr3: [u16; self.big_len],
 }
@@ -62,10 +62,10 @@ mod tests {
         #[header]
         len: usize,
 
-        #[varlen]
+        #[varlen_array]
         arr: [u8; self.len],
 
-        #[varlen]
+        #[varlen_array]
         arr2: [u16; self.len * 4],
     }
 
@@ -107,7 +107,7 @@ mod tests {
         #[header]
         pub len5: usize,
 
-        #[varlen]
+        #[varlen_array]
         arr1: [MyType; MY_CONSTANT * self.len],
     }
 

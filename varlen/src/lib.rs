@@ -26,10 +26,10 @@
 //!   #[header]
 //!   mask: u8,
 //! 
-//!   #[varlen]
+//!   #[varlen_array]
 //!   arr0: [u16; self.first_len as usize],
 //! 
-//!   #[varlen]
+//!   #[varlen_array]
 //!   arr1: [u32; self.mask.count_ones() as usize],
 //! }
 //! 
@@ -74,10 +74,10 @@
 //! #   #[header]
 //! #   mask: u8,
 //! # 
-//! #   #[varlen]
+//! #   #[varlen_array]
 //! #   arr0: [u16; self.first_len as usize],
 //! # 
-//! #   #[varlen]
+//! #   #[varlen_array]
 //! #   arr1: [u32; self.mask.count_ones() as usize],
 //! # }
 //! # fn main() {
