@@ -1,5 +1,5 @@
-use core::alloc::Layout;
-use crate::{VarLen, VarLenInitializer};
+use core::alloc as alloc;
+use crate::{VarLen, VarLenInitializer, Layout};
 use crate::owned::Owned;
 use core::ptr::NonNull;
 use core::pin::Pin;
@@ -36,8 +36,8 @@ fn try_realloc(ptr: NonNull<u8>, capacity: usize, minimum: usize, align: usize) 
     let minimum = minimum.checked_add(align - 1).ok_or(OverflowError)?;
     let minimum = minimum & 0usize.wrapping_sub(align);
     let size = std::cmp::max(std::cmp::max(minimum, 8), capacity.checked_mul(2).ok_or(OverflowError)?);
-    let old_layout = Layout::from_size_align(capacity, align).map_err(|_| OverflowError)?;
-    let layout = Layout::from_size_align(size, align).map_err(|_| OverflowError)?;
+    let old_layout = alloc::Layout::from_size_align(capacity, align).map_err(|_| OverflowError)?;
+    let layout = alloc::Layout::from_size_align(size, align).map_err(|_| OverflowError)?;
     let ptr = if capacity == 0 {
         unsafe { std::alloc::alloc(layout) }
     } else {
@@ -79,8 +79,8 @@ impl<T: VarLen> Seq<T> {
 
     #[inline]
     fn try_push(&mut self, init: impl VarLenInitializer<T>) -> Result<(), OverflowError> {
-        let size = init.required_size().ok_or(OverflowError)?;
-        let occupied_plus = self.occupied_bytes.checked_add(size).ok_or(OverflowError)?;
+        let layout = init.calculate_layout().ok_or(OverflowError)?;
+        let occupied_plus = self.occupied_bytes.checked_add(layout.size()).ok_or(OverflowError)?;
         if occupied_plus > self.capacity_bytes {
             let (ptr, capacity) = must_realloc(self.ptr.cast(), self.capacity_bytes, occupied_plus, T::ALIGN);
             self.ptr = ptr.cast();
@@ -88,7 +88,7 @@ impl<T: VarLen> Seq<T> {
         }
         let occupied_plus = round_up_fast(occupied_plus, T::ALIGN);
         unsafe {
-            init.initialize(add_bytes_fast(self.ptr, self.occupied_bytes));
+            init.initialize(add_bytes_fast(self.ptr, self.occupied_bytes), layout);
         }
         self.occupied_bytes = occupied_plus;
         self.len_logical += 1;
@@ -136,9 +136,9 @@ impl<T: VarLen> Seq<T> {
     }
 
     #[inline]
-    fn layout(&self) -> Layout {
+    fn layout(&self) -> alloc::Layout {
         unsafe {
-            Layout::from_size_align_unchecked(self.capacity_bytes, T::ALIGN)
+            alloc::Layout::from_size_align_unchecked(self.capacity_bytes, T::ALIGN)
         }
     }
 }
@@ -197,7 +197,7 @@ impl<'a, T: VarLen> Iterator for Iter<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         if self.len_logical > 0 {
             let t = unsafe { self.ptr.as_ref() };
-            let size = t.size();
+            let size = t.calculate_layout().size();
             self.ptr = unsafe { add_bytes_fast(self.ptr, round_up_fast(size, T::ALIGN)) };
             self.len_logical -= 1;
             Some(t)
@@ -249,7 +249,7 @@ impl<'a, T: VarLen> Iterator for IterMut<'a, T> {
     fn next(&mut self) -> Option<Pin<&'a mut T>> {
         if self.len_logical > 0 {
             let t = unsafe { Pin::new_unchecked(self.ptr.as_mut()) };
-            let size = t.size();
+            let size = t.calculate_layout().size();
             self.ptr = unsafe { add_bytes_fast(self.ptr, round_up_fast(size, T::ALIGN)) };
             self.len_logical -= 1;
             Some(t)
@@ -292,7 +292,7 @@ impl<'a, T: VarLen> Iterator for OwnedElems<'a, T> {
     fn next(&mut self) -> Option<Owned<'a, T>> {
         if self.len_logical > 0 {
             let t = unsafe { Owned::from_raw(self.ptr) };
-            let size = t.size();
+            let size = T::calculate_layout(&*t).size();
             self.ptr = unsafe { add_bytes_fast(self.ptr, round_up_fast(size, T::ALIGN)) };
             self.len_logical -= 1;
             Some(t)

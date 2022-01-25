@@ -25,7 +25,7 @@ pub struct NotAnArray {
 
 #[define_varlen]
 pub struct TooManyAttributes {
-    #[varlen_array] #[header]
+    #[varlen_array] #[controls_layout]
     x: [u8; 4],
 }
 

@@ -1,8 +1,8 @@
 use crate::VarLenInitializer;
 
-use super::{DropTailFn, VarLen};
+use super::{Layout, VarLen};
 
-use core::alloc::Layout;
+use core::alloc as alloc;
 use core::ptr::NonNull;
 use core::pin::Pin;
 use core::marker::PhantomData;
@@ -33,9 +33,9 @@ impl<'storage, T: VarLen> Owned<'storage,T> {
     }
 
     /// Layout of the `T`.
-    pub fn layout(&self) -> Layout {
+    pub fn alloc_layout(&self) -> alloc::Layout {
         unsafe {
-            Layout::from_size_align_unchecked(self.size(), T::ALIGN)
+            alloc::Layout::from_size_align_unchecked(T::calculate_layout(&*self).size(), T::ALIGN)
         }
     }
 }
@@ -44,14 +44,15 @@ impl<T: VarLen> Drop for Owned<'_, T> {
     fn drop(&mut self) {
         unsafe {
             // Careful sequencing of drop:
-            //  1. Read the header, before we drop it.
+            //  1. Read the layout.
             //  2. Drop the header. Needs to happen before dropping the tail, because there might
             //     be a custom Drop on the header that reads the tail.
-            //  3. Drop the tail. Uses the values we read from the header in step 1.
-            let drop_tail_fn = self.as_mut().prepare_drop_tail();
+            //  3. Drop the tail. Uses the layout we read in step 1.
+            let layout = T::calculate_layout(&*self);
+            // let drop_tail_fn = self.as_mut().prepare_drop_tail();
             let p = self.0.as_ptr();
             core::ptr::drop_in_place(p);
-            drop_tail_fn.drop_tail(self.as_mut());
+            T::drop_tail(self.as_mut(), layout);
         }
     }
 }
@@ -64,17 +65,17 @@ impl<T: VarLen> core::ops::Deref for Owned<'_, T> {
 }
 
 unsafe impl<T: VarLen> VarLenInitializer<T> for Owned<'_, T> {
-    unsafe fn initialize(self, dst: NonNull<T>) {
+    unsafe fn initialize(self, dst: NonNull<T>, layout: T::Layout) {
         // Safety:
         //  * Owned has unique access to its pointer
         //  * dst is unique
         //  * dst size is guaranteed by the SizedInitializer call
-        core::ptr::copy_nonoverlapping(self.0.as_ptr(), dst.as_ptr(), self.size());
+        core::ptr::copy_nonoverlapping(self.0.as_ptr(), dst.as_ptr(), layout.size());
         core::mem::forget(self);
     }
 
     #[inline]
-    fn required_size(&self) -> Option<usize> {
-        Some(self.size())
+    fn calculate_layout(&self) -> Option<T::Layout> {
+        Some(T::calculate_layout(&*self))
     }
 }

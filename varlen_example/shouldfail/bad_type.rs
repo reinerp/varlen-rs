@@ -2,7 +2,7 @@ use varlen::define_varlen;
 
 #[define_varlen]
 struct StructWithUndefinedTypes  {
-    #[header]
+    #[controls_layout]
     header_variable: UndefinedType1,
 
     mut_variable: UndefinedType2,
@@ -15,7 +15,7 @@ struct RequiresCopy<T: Copy>(T);
 
 #[define_varlen]
 struct StructWithIllFormedTypes  {
-    #[header]
+    #[controls_layout]
     header_variable: RequiresCopy<String>,
 
     mut_variable: RequiresCopy<Vec<String>>,
@@ -24,8 +24,9 @@ struct StructWithIllFormedTypes  {
     arr: [RequiresCopy<Vec<Vec<String>>>; 4usize],
 }
 
+#[define_varlen]
 struct StructWithUnsizedTypes {
-    #[header]
+    #[controls_layout]
     header_variable: [u8],
 
     mut_variable: [u16],

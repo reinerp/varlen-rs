@@ -1,6 +1,6 @@
-use super::{DropTailFn, VarLenInitializer, VarLen};
+use super::{Layout, VarLenInitializer, VarLen};
 
-use core::alloc::Layout;
+use core::alloc as alloc;
 use core::ptr::NonNull;
 use core::pin::Pin;
 
@@ -15,13 +15,15 @@ fn allocation_overflow() -> ! {
 
 impl<T: VarLen> VBox<T> {
     pub fn new(init: impl VarLenInitializer<T>) -> Self {
-        let size = init.required_size().unwrap_or_else(|| allocation_overflow());
-        let layout = Layout::from_size_align(size, T::ALIGN).unwrap_or_else(|_| allocation_overflow());
+        let layout = init.calculate_layout().unwrap_or_else(|| allocation_overflow());
+        let alloc_layout = alloc::Layout::from_size_align(layout.size(), T::ALIGN).unwrap_or_else(|_| allocation_overflow());
         unsafe {
-            let p = std::alloc::alloc(layout) as *mut T;
-            init.initialize(NonNull::new_unchecked(p));
+            let p = std::alloc::alloc(alloc_layout) as *mut T;
+            let layout_size = layout.size();
+            init.initialize(NonNull::new_unchecked(p), layout);
             let mut p=  NonNull::new_unchecked(p);
-            debug_assert_eq!(p.as_mut().size(), size);
+            // TODO(reinerp): Compare directly on Layout type? Or too much generated code?
+            debug_assert_eq!(p.as_mut().calculate_layout().size(), layout_size);
             VBox(p)
         }
     }
@@ -48,18 +50,17 @@ impl<T: VarLen> Drop for VBox<T> {
     fn drop(&mut self) {
         unsafe {
             // Careful sequencing of drop:
-            //  1. Read the header, before we drop it.
+            //  1. Read the layout, before we drop it.
             //  2. Drop the header. Needs to happen before dropping the tail, because there might
             //     be a custom Drop on the header that reads the tail.
             //  3. Drop the tail. Uses the values we read from the header in step 1.
             //  4. Deallocate.
-            let size = self.as_mut().size();
-            let layout = Layout::from_size_align(size, T::ALIGN).unwrap_or_else(|_| allocation_overflow());
-            let drop_tail_fn = self.as_mut().prepare_drop_tail();
+            let layout = T::calculate_layout(&*self);
+            let alloc_layout = alloc::Layout::from_size_align_unchecked(layout.size(), T::ALIGN);
             let p = self.0.as_ptr();
             core::ptr::drop_in_place(p);
-            drop_tail_fn.drop_tail(self.as_mut());
-            std::alloc::dealloc(p as *mut u8, layout);
+            T::drop_tail(self.as_mut(), layout);
+            std::alloc::dealloc(p as *mut u8, alloc_layout);
         }
     }
 }
@@ -73,20 +74,21 @@ impl<T: VarLen> core::ops::Deref for VBox<T> {
 }
 
 unsafe impl<T: VarLen> VarLenInitializer<T> for VBox<T> {
-    unsafe fn initialize(self, dst: NonNull<T>) {
-        let size = self.size();
-        let layout = Layout::from_size_align(size, T::ALIGN).unwrap_or_else(|_| allocation_overflow());
+    unsafe fn initialize(self, dst: NonNull<T>, layout: T::Layout) {
+        let size = layout.size();
+        // Safety: we already called from_size_align in the VBox constructor.
+        let layout = alloc::Layout::from_size_align_unchecked(size, T::ALIGN);
         // Safety:
         //  * Owned has unique access to its pointer
         //  * dst is unique
         //  * dst size is guaranteed by the SizedInitializer call
-        core::ptr::copy_nonoverlapping(self.0.as_ptr(), dst.as_ptr(), self.size());
+        core::ptr::copy_nonoverlapping(self.0.as_ptr(), dst.as_ptr(), size);
         std::alloc::dealloc(self.0.as_ptr() as *mut u8, layout);
         core::mem::forget(self);
     }
 
     #[inline]
-    fn required_size(&self) -> Option<usize> {
-        Some(self.size())
+    fn calculate_layout(&self) -> Option<T::Layout> {
+        Some(T::calculate_layout(&*self))
     }
 }

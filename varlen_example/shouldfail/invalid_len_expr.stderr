@@ -1,28 +1,34 @@
+warning: unused import: `varlen::define_varlen`
+ --> src/lib.rs
+  |
+  | use varlen::define_varlen;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
 error[E0425]: cannot find value `x` in this scope
-  --> shouldfail/invalid_len_expr.rs:17:15
+  --> shouldfail/invalid_len_expr.rs:11:15
    |
-17 |     arr: [u8; x * y],
+11 |     arr: [u8; x * y],
    |               ^ not found in this scope
 
 error[E0425]: cannot find value `y` in this scope
-  --> shouldfail/invalid_len_expr.rs:17:19
+  --> shouldfail/invalid_len_expr.rs:11:19
    |
-17 |     arr: [u8; x * y],
+11 |     arr: [u8; x * y],
    |                   ^ not found in this scope
 
-error[E0308]: mismatched types
-  --> shouldfail/invalid_len_expr.rs:20:16
+error[E0425]: cannot find value `not_a_header` in this scope
+  --> shouldfail/invalid_len_expr.rs:17:17
    |
-20 |     arr2: [u8; self.u8_len],
-   |                ^^^^^^^^^^^
-   |                |
-   |                expected `usize`, found `u8`
-   |                expected `usize` because of return type
+17 |     arr3: [u8; *not_a_header],
+   |                 ^^^^^^^^^^^^ not found in this scope
 
-error[E0609]: no field `not_a_header` on type `&Header`
-  --> shouldfail/invalid_len_expr.rs:23:21
+error[E0308]: mismatched types
+  --> shouldfail/invalid_len_expr.rs:14:16
    |
-23 |     arr3: [u8; self.not_a_header],
-   |                     ^^^^^^^^^^^^ unknown field
-   |
-   = note: available fields are: `u8_len`
+3  | #[define_varlen]
+   | ---------------- expected `usize` because of return type
+...
+14 |     arr2: [u8; *u8_len],
+   |                ^^^^^^^ expected `usize`, found `u8`

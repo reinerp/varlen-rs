@@ -1,3 +1,20 @@
+warning: unused import: `varlen::define_varlen`
+ --> src/lib.rs
+  |
+  | use varlen::define_varlen;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+error[E0124]: field `x` is already declared
+ --> shouldfail/bad_names.rs:9:5
+  |
+6 |     x: u8,
+  |     ----- `x` first declared here
+...
+9 |     x: u8,
+  |     ^^^^^ field already declared
+
 error[E0124]: field `x` is already declared
  --> shouldfail/bad_names.rs:3:1
   |

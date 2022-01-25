@@ -2,10 +2,10 @@ use varlen::define_varlen;
 
 #[define_varlen]
 struct StructWithBadNames  {
-    #[header]
+    #[controls_layout]
     x: u8,
 
-    #[header]
+    #[controls_layout]
     x: u8,
 }
 

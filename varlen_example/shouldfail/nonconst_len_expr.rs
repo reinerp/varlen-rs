@@ -8,13 +8,13 @@ fn next_rand() -> usize {
 
 #[define_varlen]
 struct S {
-    #[header]
+    #[controls_layout]
     u8_len: u8,
 
     not_a_header: u16,
 
     #[varlen_array]
-    arr1: [u8; (&self) as *const _ as usize],
+    arr1: [u8; u8_len as *const _ as usize],
 
     #[varlen_array]
     arr2: [u8; next_rand()],
@@ -23,7 +23,7 @@ struct S {
     arr3: [u8; MY_CONST],
 
     #[varlen_array]
-    arr4: [u8; std::mem::transmute(&self) ]
+    arr4: [u8; std::mem::transmute(u8_len) ]
 }
 
 fn main() {}

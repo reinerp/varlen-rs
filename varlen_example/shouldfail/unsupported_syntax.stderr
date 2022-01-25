@@ -1,3 +1,11 @@
+warning: unused import: `varlen::define_varlen`
+ --> src/lib.rs
+  |
+  | use varlen::define_varlen;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
 error: define_varlen requires named fields
  --> shouldfail/unsupported_syntax.rs:4:8
   |
@@ -34,11 +42,11 @@ error: Fields annotated with #[varlen_array] must be of array type
 23 |     x: u8,
    |        ^^
 
-error: Field must have at most one of #[varlen] and #[header] attributes
-  --> shouldfail/unsupported_syntax.rs:28:5
+error: Field must have at most one of #[varlen], #[varlen_array], #[length] attributes
+  --> shouldfail/unsupported_syntax.rs:28:21
    |
-28 |     #[varlen_array] #[header]
-   |     ^^^^^^^^^^^^^^^
+28 |     #[varlen_array] #[controls_layout]
+   |                     ^^^^^^^^^^^^^^^^^^
 
 error: define_varlen could not parse this as a struct
   --> shouldfail/unsupported_syntax.rs:33:1
@@ -49,14 +57,14 @@ error: define_varlen could not parse this as a struct
 error: cannot find attribute `varlen_array` in this scope
   --> shouldfail/unsupported_syntax.rs:28:7
    |
-28 |     #[varlen_array] #[header]
+28 |     #[varlen_array] #[controls_layout]
    |       ^^^^^^^^^^^^
 
-error: cannot find attribute `header` in this scope
+error: cannot find attribute `controls_layout` in this scope
   --> shouldfail/unsupported_syntax.rs:28:23
    |
-28 |     #[varlen_array] #[header]
-   |                       ^^^^^^
+28 |     #[varlen_array] #[controls_layout]
+   |                       ^^^^^^^^^^^^^^^
 
 error: cannot find attribute `varlen_array` in this scope
   --> shouldfail/unsupported_syntax.rs:22:7
