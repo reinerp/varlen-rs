@@ -1,56 +1,56 @@
 use varlen::define_varlen;
 
-// #[define_varlen]
-// /// This struct contains two lengths and three arrays.
-// pub struct CoolStruct {
-//     /// This length controls the first two arrays.
-//     #[controls_layout]
-//     pub small_len: u8,
-//     /// This length controls the last array.
-//     #[controls_layout]
-//     pub big_len: usize,
+#[define_varlen]
+/// This struct contains two lengths and three arrays.
+pub struct CoolStruct {
+    /// This length controls the first two arrays.
+    #[controls_layout]
+    pub small_len: u8,
+    /// This length controls the last array.
+    #[controls_layout]
+    pub big_len: usize,
 
-//     #[varlen_array]
-//     /// An array.
-//     pub arr1: [u8; *small_len as usize],
+    #[varlen_array]
+    /// An array.
+    pub arr1: [u8; *small_len as usize],
 
-//     #[varlen_array]
-//     /// Another array.
-//     pub arr2: [u8; *small_len as usize],
+    #[varlen_array]
+    /// Another array.
+    pub arr2: [u8; *small_len as usize],
 
-//     #[varlen_array]
-//     /// A third array.
-//     pub arr3: [u16; *big_len],
-// }
+    #[varlen_array]
+    /// A third array.
+    pub arr3: [u16; *big_len],
+}
 
 
-// #[define_varlen]
-// /// This struct contains two lengths and three arrays.
-// pub struct CoolStructWithMutableFields {
-//     /// This length controls the first two arrays.
-//     #[controls_layout]
-//     pub small_len: u8,
-//     /// This length controls the last array.
-//     #[controls_layout]
-//     pub big_len: usize,
+#[define_varlen]
+/// This struct contains two lengths and three arrays.
+pub struct CoolStructWithMutableFields {
+    /// This length controls the first two arrays.
+    #[controls_layout]
+    pub small_len: u8,
+    /// This length controls the last array.
+    #[controls_layout]
+    pub big_len: usize,
 
-//     /// This field can be modified on an existing object.
-//     pub some_string: String,
-//     /// So can this.
-//     pub some_int: i16,
+    /// This field can be modified on an existing object.
+    pub some_string: String,
+    /// So can this.
+    pub some_int: i16,
 
-//     #[varlen_array]
-//     /// An array.
-//     pub arr1: [u8; *small_len as usize],
+    #[varlen_array]
+    /// An array.
+    pub arr1: [u8; *small_len as usize],
 
-//     #[varlen_array]
-//     /// Another array.
-//     pub arr2: [u8; *small_len as usize],
+    #[varlen_array]
+    /// Another array.
+    pub arr2: [u8; *small_len as usize],
 
-//     #[varlen_array]
-//     /// A third array.
-//     pub arr3: [u16; *big_len],
-// }
+    #[varlen_array]
+    /// A third array.
+    pub arr3: [u16; *big_len],
+}
 
 
 #[cfg(test)]
@@ -89,6 +89,7 @@ mod tests {
 
     #[define_varlen]
     pub struct HasNest {
+        #[allow(dead_code)]
         x: u32,
 
         #[varlen]

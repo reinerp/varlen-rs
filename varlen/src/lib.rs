@@ -20,17 +20,17 @@
 //! use varlen::define_varlen;
 //! #[define_varlen]
 //! struct CoolVarLen {
-//!   #[header]
+//!   #[controls_layout]
 //!   first_len: u8,
 //! 
-//!   #[header]
+//!   #[controls_layout]
 //!   mask: u8,
 //! 
 //!   #[varlen_array]
-//!   arr0: [u16; self.first_len as usize],
+//!   arr0: [u16; *first_len as usize],
 //! 
 //!   #[varlen_array]
-//!   arr1: [u32; self.mask.count_ones() as usize],
+//!   arr1: [u32; mask.count_ones() as usize],
 //! }
 //! 
 //! # fn main() {}
@@ -68,24 +68,22 @@
 //! # use varlen::define_varlen;
 //! # #[define_varlen]
 //! # struct CoolVarLen {
-//! #   #[header]
+//! #   #[controls_layout]
 //! #   first_len: u8,
 //! # 
-//! #   #[header]
+//! #   #[controls_layout]
 //! #   mask: u8,
 //! # 
 //! #   #[varlen_array]
-//! #   arr0: [u16; self.first_len as usize],
+//! #   arr0: [u16; *first_len as usize],
 //! # 
 //! #   #[varlen_array]
-//! #   arr1: [u32; self.mask.count_ones() as usize],
+//! #   arr1: [u32; mask.count_ones() as usize],
 //! # }
 //! # fn main() {
 //! let b: VBox<CoolVarLen> = VBox::new(cool_var_len::Init{
-//!   header: cool_var_len::Header{
-//!     first_len: 2,
-//!     mask: 0xff,
-//!   },
+//!   first_len: 2,
+//!   mask: 0xff,
 //!   arr0: FillWithDefault,
 //!   arr1: FillSequentially(|i| (i as u32) * 3),
 //! });

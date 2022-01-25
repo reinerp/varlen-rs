@@ -1,67 +1,82 @@
-// use crate::{VarLen, VarLenInitializer, Layout, ArrayInitializer};
-// use core::pin::Pin;
-// use core::ptr::NonNull;
-// use core::mem::MaybeUninit;
+use crate::{VarLen, VarLenInitializer, Layout, ArrayInitializer};
+use core::pin::Pin;
+use core::ptr::NonNull;
+use core::mem::MaybeUninit;
 
-// pub struct SingleByteArray {
-//     len: usize,
-//     // Tail: [u8; len]
-// }
+pub struct SingleByteArray {
+    len: usize,
+    // Tail: [u8; len]
+}
 
-// impl SingleByteArray {
-//     pub fn tail(&self) -> &[u8] {
-//         let len = self.len;
-//         unsafe {
-//             let ptr = (self as *const SingleByteArray).add(1) as *const u8;
-//             core::slice::from_raw_parts(ptr, len)
-//         }
-//     }
+impl SingleByteArray {
+    pub fn tail(&self) -> &[u8] {
+        let len = self.len;
+        unsafe {
+            let ptr = (self as *const SingleByteArray).add(1) as *const u8;
+            core::slice::from_raw_parts(ptr, len)
+        }
+    }
 
-//     pub fn tail_mut(&mut self) -> &mut [u8] {
-//         let len = self.len;
-//         unsafe {
-//             let ptr = (self as *mut SingleByteArray).add(1) as *mut u8;
-//             core::slice::from_raw_parts_mut(ptr, len)
-//         }
-//     }
-// }
+    pub fn tail_mut(self: Pin<&mut Self>) -> &mut [u8] {
+        let len = self.len;
+        unsafe {
+            let ptr = (self.get_unchecked_mut() as *mut SingleByteArray).add(1) as *mut u8;
+            core::slice::from_raw_parts_mut(ptr, len)
+        }
+    }
+}
 
-// unsafe impl VarLen for SingleByteArray {
-//     fn size(&self) -> usize {
-//         core::mem::size_of::<Self>() + self.len
-//     }
+pub struct SBALayout {
+    array_len: usize,
+    size: usize,
+}
 
-//     const ALIGN: usize = core::mem::align_of::<Self>();
+impl Layout for SBALayout {
+    fn size(&self) -> usize {
+        self.size
+    }
+}
 
-//     const NEEDS_DROP_TAIL: bool = false;
+unsafe impl VarLen for SingleByteArray {
+    type Layout = SBALayout;
 
-//     type DropTailFn = NothingToDrop;
+    fn calculate_layout(&self) -> SBALayout {
+        let tail_offset = core::mem::size_of::<Self>();
+        let array_len = self.len;
+        let size = tail_offset + array_len * core::mem::size_of::<u8>();
+        SBALayout{
+            array_len,
+            size,
+        }
+    }
 
-//     fn prepare_drop_tail(&self) -> Self::DropTailFn {
-//         NothingToDrop
-//     }
-// }
+    const ALIGN: usize = core::mem::align_of::<Self>();
 
-// pub struct NothingToDrop;
+    const NEEDS_DROP_TAIL: bool = false;
 
-// impl<T> DropTailFn<T> for NothingToDrop {
-//     unsafe fn drop_tail(self, _obj: Pin<&mut T>) {}
-// }
+    unsafe fn drop_tail(self: core::pin::Pin<&mut Self>, _layout: SBALayout) {}
+}
 
-// pub struct SingleByteArrayInit<TailInit> {
-//     pub len: usize,
-//     pub tail: TailInit,
-// }
+pub struct SingleByteArrayInit<TailInit> {
+    pub len: usize,
+    pub tail: TailInit,
+}
 
-// unsafe impl<TailInit: ArrayInitializer<u8>> VarLenInitializer<SingleByteArray> for SingleByteArrayInit<TailInit> {
-//     fn required_size(&self) -> Option<usize> {
-//         core::mem::size_of::<SingleByteArray>().checked_add(self.len)
-//     }
+unsafe impl<TailInit: ArrayInitializer<u8>> VarLenInitializer<SingleByteArray> for SingleByteArrayInit<TailInit> {
+    fn calculate_layout(&self) -> Option<SBALayout> {
+        let tail_offset = core::mem::size_of::<Self>();
+        let array_len = self.len;
+        let size = tail_offset.checked_add(self.len)?;
+        Some(SBALayout{
+            array_len,
+            size,
+        })
+    }
 
-//     unsafe fn initialize(self, dst: NonNull<SingleByteArray>) {
-//         core::ptr::write(dst.as_ptr(), SingleByteArray{len: self.len});
-//         let tail = core::slice::from_raw_parts_mut(dst.as_ptr().add(1) as *mut MaybeUninit<u8>, self.len) 
-//             as *mut [MaybeUninit<u8>] as *mut [u8];
-//         self.tail.initialize(NonNull::new_unchecked(tail))
-//     }
-// }
+    unsafe fn initialize(self, dst: NonNull<SingleByteArray>, layout: SBALayout) {
+        core::ptr::write(dst.as_ptr(), SingleByteArray{len: self.len});
+        let tail = core::slice::from_raw_parts_mut(dst.as_ptr().add(1) as *mut MaybeUninit<u8>, layout.array_len) 
+            as *mut [MaybeUninit<u8>] as *mut [u8];
+        self.tail.initialize(NonNull::new_unchecked(tail))
+    }
+}
