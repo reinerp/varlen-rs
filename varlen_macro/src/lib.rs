@@ -620,7 +620,7 @@ impl FieldGroups {
             <#ty as ::varlen::VarLen>::ALIGN
         });
         self.varlen_fields.needs_drop_tail.push(quote_spanned! { span =>
-            (<#ty as ::varlen::VarLen>::NEEDS_DROP_TAIL && ::core::mem::needs_drop::<#ty>())
+            (<#ty as ::varlen::VarLen>::NEEDS_DROP_TAIL || ::core::mem::needs_drop::<#ty>())
         });
 
         self.all_fields.meta.push(meta);

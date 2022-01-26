@@ -101,6 +101,7 @@ pub mod owned;
 pub mod vbox;
 pub mod seq;
 pub mod marker;
+pub mod generic;
 
 #[cfg(test)]
 mod test_type;

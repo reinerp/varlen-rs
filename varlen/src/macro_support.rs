@@ -114,12 +114,13 @@ pub fn cat_field_fast<Field: VarLen, Parent>(
     Field::Layout,
     /* size afterwards */ usize,
 ) {
+    let align = Field::ALIGN;
+    let offset = offset.wrapping_add(align - 1) & 0usize.wrapping_sub(align);
+
     let child: &Field =
         unsafe { &*((parent as *const Parent as *const u8).wrapping_add(offset) as *const Field) };
     let layout = child.calculate_layout();
 
-    let align = Field::ALIGN;
-    let offset = offset.wrapping_add(align - 1) & 0usize.wrapping_sub(align);
     let size = offset.wrapping_add(layout.size());
     (offset, layout, size)
 }
