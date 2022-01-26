@@ -92,8 +92,6 @@
 //! # }
 //! ```
 
-
-
 #[doc(hidden)]
 pub mod macro_support;
 pub mod init;
@@ -103,6 +101,8 @@ pub mod seq;
 pub mod marker;
 pub mod generic;
 pub mod array;
+pub mod str;
+pub mod newtype;
 
 #[cfg(test)]
 mod test_type;

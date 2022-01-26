@@ -1,7 +1,7 @@
 use crate::marker::ArrayMarker;
 use crate::{ArrayInitializer, Initializer, Layout, VarLen};
 
-pub struct Array<T, Len: sealed::ValidSize = usize> {
+pub struct Array<T, Len: ArrayLen = usize> {
     len: Len,
     _array: ArrayMarker<T>,
 }
@@ -19,7 +19,7 @@ impl Layout for ArrayLayout {
     }
 }
 
-unsafe impl<T, Len: sealed::ValidSize> VarLen for Array<T, Len> {
+unsafe impl<T, Len: ArrayLen> VarLen for Array<T, Len> {
     type Layout = ArrayLayout;
 
     #[inline(always)]
@@ -42,7 +42,7 @@ unsafe impl<T, Len: sealed::ValidSize> VarLen for Array<T, Len> {
     }
 }
 
-impl<T, Len: sealed::ValidSize> core::ops::Deref for Array<T, Len> {
+impl<T, Len: ArrayLen> core::ops::Deref for Array<T, Len> {
     type Target = [T];
     fn deref(&self) -> &[T] {
         let layout = self.calculate_layout();
@@ -52,7 +52,7 @@ impl<T, Len: sealed::ValidSize> core::ops::Deref for Array<T, Len> {
     }
 }
 
-impl<T, Len: sealed::ValidSize> core::ops::DerefMut for Array<T, Len> {
+impl<T, Len: ArrayLen> core::ops::DerefMut for Array<T, Len> {
     fn deref_mut(&mut self) -> &mut [T] {
         let layout = self.calculate_layout();
         unsafe {
@@ -61,9 +61,9 @@ impl<T, Len: sealed::ValidSize> core::ops::DerefMut for Array<T, Len> {
     }
 }
 
-pub struct SizedInit<Init, Len: sealed::ValidSize = usize>(pub Len, pub Init);
+pub struct SizedInit<Init, Len: ArrayLen = usize>(pub Len, pub Init);
 
-pub fn copy_from_slice<T: Copy, Len: sealed::ValidSize>(src: &[T]) -> Option<SizedInit<crate::init::CopyFrom<T>, Len>> {
+pub fn copy_from_slice<T: Copy, Len: ArrayLen>(src: &[T]) -> Option<SizedInit<crate::init::CopyFrom<T>, Len>> {
     let len = Len::from_usize(src.len())?;
     Some(SizedInit(
         len,
@@ -71,7 +71,7 @@ pub fn copy_from_slice<T: Copy, Len: sealed::ValidSize>(src: &[T]) -> Option<Siz
     ))
 }   
 
-pub fn clone_from_slice<T: Clone, Len: sealed::ValidSize>(src: &[T]) -> Option<SizedInit<crate::init::CloneFrom<T>, Len>> {
+pub fn clone_from_slice<T: Clone, Len: ArrayLen>(src: &[T]) -> Option<SizedInit<crate::init::CloneFrom<T>, Len>> {
     let len = Len::from_usize(src.len())?;
     Some(SizedInit(
         len,
@@ -79,7 +79,7 @@ pub fn clone_from_slice<T: Clone, Len: sealed::ValidSize>(src: &[T]) -> Option<S
     ))
 }
 
-unsafe impl<T, Len: sealed::ValidSize, Init: ArrayInitializer<T>> Initializer<Array<T, Len>> for SizedInit<Init, Len> {
+unsafe impl<T, Len: ArrayLen, Init: ArrayInitializer<T>> Initializer<Array<T, Len>> for SizedInit<Init, Len> {
     #[inline(always)]
     fn calculate_layout_cautious(&self) -> Option<ArrayLayout> {
         let offset = core::mem::size_of::<Array<T, Len>>();
@@ -100,21 +100,25 @@ unsafe impl<T, Len: sealed::ValidSize, Init: ArrayInitializer<T>> Initializer<Ar
     }
 }
 
-mod sealed {
-    pub trait ValidSize: Copy {
-        fn as_usize(self) -> usize;
-        fn from_usize(x: usize) -> Option<Self>;
+pub trait ArrayLen: Copy + private::Sealed {
+    fn as_usize(self) -> usize;
+    fn from_usize(x: usize) -> Option<Self>;
+}
+
+impl ArrayLen for usize {
+    #[inline(always)]
+    fn as_usize(self) -> usize {
+        self
     }
 
-    impl ValidSize for usize {
-        #[inline(always)]
-        fn as_usize(self) -> usize {
-            self
-        }
-
-        #[inline(always)]
-        fn from_usize(x: usize) -> Option<Self> {
-            Some(x)
-        }
+    #[inline(always)]
+    fn from_usize(x: usize) -> Option<Self> {
+        Some(x)
     }
+}
+
+mod private {
+    pub trait Sealed {}
+
+    impl Sealed for usize {}
 }
