@@ -1,5 +1,6 @@
 use crate::marker::ArrayMarker;
 use crate::{ArrayInitializer, Initializer, Layout, VarLen};
+use core::pin::Pin;
 
 pub struct Array<T, Len: ArrayLen = usize> {
     len: Len,
@@ -52,11 +53,11 @@ impl<T, Len: ArrayLen> core::ops::Deref for Array<T, Len> {
     }
 }
 
-impl<T, Len: ArrayLen> core::ops::DerefMut for Array<T, Len> {
-    fn deref_mut(&mut self) -> &mut [T] {
+impl<T, Len: ArrayLen> Array<T, Len> {
+    pub fn mut_slice(self: Pin<&mut Self>) -> &mut [T] {
         let layout = self.calculate_layout();
         unsafe {
-            crate::macro_support::mut_array(self as *mut _, layout.array_offset, layout.array_len)
+            crate::macro_support::mut_array(self.get_unchecked_mut() as *mut _, layout.array_offset, layout.array_len)
         }
     }
 }
