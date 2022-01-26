@@ -102,6 +102,7 @@ pub mod vbox;
 pub mod seq;
 pub mod marker;
 pub mod generic;
+pub mod array;
 
 #[cfg(test)]
 mod test_type;
