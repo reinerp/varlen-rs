@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::{VarLen, Initializer, Layout, ArrayInitializer};
 use core::pin::Pin;
 use core::ptr::NonNull;

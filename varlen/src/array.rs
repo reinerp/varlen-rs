@@ -60,25 +60,27 @@ impl<T, Len: ArrayLen> Array<T, Len> {
             crate::macro_support::mut_array(self.get_unchecked_mut() as *mut _, layout.array_offset, layout.array_len)
         }
     }
+
+    pub fn copy_from_slice(src: &[T]) -> Option<SizedInit<crate::init::CopyFrom<T>, Len>> 
+        where T: Copy {
+        let len = Len::from_usize(src.len())?;
+        Some(SizedInit(
+            len,
+            crate::init::CopyFrom(src),
+        ))
+    }   
+    
+    pub fn clone_from_slice(src: &[T]) -> Option<SizedInit<crate::init::CloneFrom<T>, Len>> 
+        where T: Clone {
+        let len = Len::from_usize(src.len())?;
+        Some(SizedInit(
+            len,
+            crate::init::CloneFrom(src),
+        ))
+    }
 }
 
 pub struct SizedInit<Init, Len: ArrayLen = usize>(pub Len, pub Init);
-
-pub fn copy_from_slice<T: Copy, Len: ArrayLen>(src: &[T]) -> Option<SizedInit<crate::init::CopyFrom<T>, Len>> {
-    let len = Len::from_usize(src.len())?;
-    Some(SizedInit(
-        len,
-        crate::init::CopyFrom(src),
-    ))
-}   
-
-pub fn clone_from_slice<T: Clone, Len: ArrayLen>(src: &[T]) -> Option<SizedInit<crate::init::CloneFrom<T>, Len>> {
-    let len = Len::from_usize(src.len())?;
-    Some(SizedInit(
-        len,
-        crate::init::CloneFrom(src),
-    ))
-}
 
 unsafe impl<T, Len: ArrayLen, Init: ArrayInitializer<T>> Initializer<Array<T, Len>> for SizedInit<Init, Len> {
     #[inline(always)]
@@ -101,7 +103,7 @@ unsafe impl<T, Len: ArrayLen, Init: ArrayInitializer<T>> Initializer<Array<T, Le
     }
 }
 
-pub trait ArrayLen: Copy + private::Sealed {
+pub trait ArrayLen: 'static + Copy + private::Sealed {
     fn as_usize(self) -> usize;
     fn from_usize(x: usize) -> Option<Self>;
 }
@@ -117,9 +119,30 @@ impl ArrayLen for usize {
         Some(x)
     }
 }
+impl private::Sealed for usize {}
+
+macro_rules! impl_arraylen {
+    ($t:ty) => {
+        impl ArrayLen for $t {
+            #[inline(always)]
+            fn as_usize(self) -> usize {
+                self as usize
+            }
+        
+            #[inline(always)]
+            fn from_usize(x: usize) -> Option<Self> {
+                Self::try_from(x).ok()
+            }
+        }
+        impl private::Sealed for $t {}
+    }
+}
+impl_arraylen!(u8);
+impl_arraylen!(u16);
+impl_arraylen!(u32);
+impl_arraylen!(u64);
 
 mod private {
     pub trait Sealed {}
 
-    impl Sealed for usize {}
 }

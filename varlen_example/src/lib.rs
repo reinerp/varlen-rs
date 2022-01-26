@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use varlen::define_varlen;
 
 #[define_varlen]

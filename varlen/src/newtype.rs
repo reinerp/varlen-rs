@@ -2,6 +2,7 @@
 macro_rules! varlen_newtype {
     (
         #[repr(transparent)]
+        $(#[$attrs:meta])*
         $tyvis:vis struct $outer:ident $(< $( ( $($generics:tt)* ) ),* >)? ($fieldvis:vis $inner:ty);
 
         $(
@@ -14,6 +15,7 @@ macro_rules! varlen_newtype {
 
     ) => {
         #[repr(transparent)]
+        $(#[$attrs])*
         $tyvis struct $outer $(< $($($generics)*),* >)* ($fieldvis $inner);
 
         $initvis struct $init < InnerInit >($initfieldvis InnerInit);
@@ -63,16 +65,47 @@ macro_rules! varlen_newtype {
     }
 }
 
+#[macro_export]
+macro_rules! initializer_newtype {
+    (
+        impl $(< $( ( $($generic_params:tt)* ) ),* >)* varlen::Initializer<$t:ty> for $init:ty { _ }
+    ) => {
+        unsafe impl $(< $( $($($generic_params)*,)* )*>)* $crate::Initializer<$t> for $init {
+            #[inline(always)]
+            fn calculate_layout_cautious(&self) -> ::core::option::Option<<$t as $crate::VarLen>::Layout> {
+                $crate::Initializer::<$t>::calculate_layout_cautious(&self.0)
+            }
+
+            #[inline(always)]
+            unsafe fn initialize(self, dst: ::core::ptr::NonNull<$t>, layout: <$t as $crate::VarLen>::Layout) {
+                // Safety:
+                // * validity of dst is ensured by caller
+                // * layout matches what we called layout on above, on `self.0`
+                self.0.initialize(dst, layout);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::array::Array;
+    #![allow(dead_code)]
+    use crate::array::{Array, SizedInit};
+    use crate::init::FillWithDefault;
 
     varlen_newtype! {
         #[repr(transparent)]
+        /// Example
         pub struct Str(Array<u8>);
 
         with init: pub struct StrInit<_>(pub _);
         with inner_ref: pub fn inner(&self) -> &_;
         with inner_mut: pub fn inner_mut(self: _) -> _;
+    }
+
+    pub struct InitStrZero(StrInit<SizedInit<FillWithDefault>>);
+
+    initializer_newtype! {
+        impl varlen::Initializer<Str> for InitStrZero { _ }
     }
 }
