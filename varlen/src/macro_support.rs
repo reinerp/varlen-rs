@@ -1,7 +1,7 @@
 use core::pin::Pin;
 use core::ptr::NonNull;
 
-use crate::{Layout, VarLen, VarLenInitializer};
+use crate::{Layout, VarLen, Initializer};
 
 
 // Array fields
@@ -67,20 +67,20 @@ pub unsafe fn mut_array<'a, S, T>(base: *mut S, offset: usize, len: usize) -> &'
     core::slice::from_raw_parts_mut((base as *mut u8).wrapping_add(offset) as *mut T, len)
 }
 
-pub unsafe fn init_array<T>(init: impl crate::ArrayInitializer<T>, base: NonNull<u8>, offset: usize, len: usize) -> crate::VarLenArray<T> {
+pub unsafe fn init_array<T>(init: impl crate::ArrayInitializer<T>, base: NonNull<u8>, offset: usize, len: usize) -> crate::marker::ArrayMarker<T> {
     let slice_ptr = NonNull::new_unchecked(core::ptr::slice_from_raw_parts_mut(
                 base.as_ptr().wrapping_add(offset) as *mut T,
                 len,
             ));
     init.initialize(slice_ptr);
-    crate::VarLenArray::new_unchecked()
+    crate::marker::ArrayMarker::new_unchecked()
 }
 
 
 // Varlen fields
 
 #[inline(always)]
-pub fn cat_field_cautious<Field: VarLen, Init: VarLenInitializer<Field>>(
+pub fn cat_field_cautious<Field: VarLen, Init: Initializer<Field>>(
     init: &Init,
     offset: usize,
 ) -> Option<(
@@ -94,7 +94,7 @@ pub fn cat_field_cautious<Field: VarLen, Init: VarLenInitializer<Field>>(
         None => return None,
     };
     let offset = offset & 0usize.wrapping_sub(align);
-    let layout = match init.calculate_layout() {
+    let layout = match init.calculate_layout_cautious() {
         Some(l) => l,
         None => return None,
     };
@@ -126,15 +126,15 @@ pub fn cat_field_fast<Field: VarLen, Parent>(
 
 /// Safety: `p+offset` must have valid storage as specified by `layout`.
 #[inline(always)]
-pub unsafe fn init_field<Field: VarLen, Init: VarLenInitializer<Field>>(
+pub unsafe fn init_field<Field: VarLen, Init: Initializer<Field>>(
     init: Init,
     p: NonNull<u8>,
     offset: usize,
     layout: Field::Layout,
-) -> crate::VarLenField<Field> {
+) -> crate::marker::FieldMarker<Field> {
     let p = NonNull::new_unchecked(p.as_ptr().wrapping_add(offset) as *mut Field);
     init.initialize(p, layout);
-    crate::VarLenField::new_unchecked()
+    crate::marker::FieldMarker::new_unchecked()
 }
 
 /// Safety: `p+offset` must have a valid `Field` which matches `layout`.
@@ -173,3 +173,4 @@ pub const fn array_max(arr: &[usize]) -> usize {
     }
     r
 }
+

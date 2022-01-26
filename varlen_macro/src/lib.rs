@@ -68,7 +68,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             len_expr,
             len_ident,
         },
-        varlen_fields: VarLenFields{
+        varlen_fields: FieldMarkers{
             meta: Meta{
                 ident: varlen_ident,
                 ..
@@ -224,9 +224,9 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
         }
 
         unsafe impl< #( #varlen_init_ty_param: #varlen_init_ty_constraint, )* >
-                ::varlen::VarLenInitializer<#tyname> for #mod_name::Init< #( #varlen_init_ty_param, )* > {
+                ::varlen::Initializer<#tyname> for #mod_name::Init< #( #varlen_init_ty_param, )* > {
             #[inline(always)]
-            fn calculate_layout(&self) -> ::core::option::Option<#mod_name::VarLenLayout> {
+            fn calculate_layout_cautious(&self) -> ::core::option::Option<#mod_name::VarLenLayout> {
                 let lengths = (
                     #(
                         &self.#lengths_ident,
@@ -234,10 +234,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 );
                 let size = ::core::mem::size_of::<#tyname>();
                 #(
-                    let (#varlen_ident, #varlen_layout_ident, size) = match #varlen_cat_field_cautious {
-                        ::core::option::Option::Some(s) => s,
-                        ::core::option::Option::None => return ::core::option::Option::None,
-                    };
+                    let (#varlen_ident, #varlen_layout_ident, size) = #varlen_cat_field_cautious?;
                 )*
                 ::core::option::Option::Some(#mod_name::VarLenLayout{
                     #(
@@ -453,7 +450,7 @@ impl LengthFields {
 }
 
 /// Fields associated with variable-length (array or VarLen) types.
-struct VarLenFields {
+struct FieldMarkers {
     /// Universal metadata
     meta: Meta,
     /// Type parameter for this field's initializer
@@ -476,9 +473,9 @@ struct VarLenFields {
     needs_drop_tail: Vec<TokenStream>,
 }
 
-impl VarLenFields {
+impl FieldMarkers {
     fn new() -> Self {
-        VarLenFields{
+        FieldMarkers{
             meta: Meta::new(),
             init_ty_params: Vec::new(),
             init_ty_constraints: Vec::new(),
@@ -545,7 +542,7 @@ impl LengthExprs {
 struct FieldGroups {
     lengths: LengthFields,
     len_exprs: LengthExprs,
-    varlen_fields: VarLenFields,
+    varlen_fields: FieldMarkers,
     all_fields: AllFields,
 }
 
@@ -554,7 +551,7 @@ impl FieldGroups {
         FieldGroups {
             lengths: LengthFields::new(),
             len_exprs: LengthExprs::new(),
-            varlen_fields: VarLenFields::new(),
+            varlen_fields: FieldMarkers::new(),
             all_fields: AllFields::new(),
         }
     }
@@ -566,8 +563,8 @@ impl FieldGroups {
         let ty = f.ty;
 
         self.all_fields.meta.push(meta);
-        self.all_fields.decl_ty.push(quote! { #ty });
-        self.all_fields.init_ty.push(quote! { #ty });
+        self.all_fields.decl_ty.push(quote_spanned! { span => #ty });
+        self.all_fields.init_ty.push(quote_spanned! { span => #ty });
         self.all_fields.ref_ty.push(quote_spanned!{ span => &'a #ty });
         self.all_fields.mut_ty.push(quote_spanned!{ span => &'a mut #ty });
         self.all_fields.init_field.push(quote_spanned!{ span => self.#ident });
@@ -586,8 +583,8 @@ impl FieldGroups {
         self.lengths.tys.push(ty.clone());
 
         self.all_fields.meta.push(meta);
-        self.all_fields.decl_ty.push(quote! { #ty });
-        self.all_fields.init_ty.push(quote! { #ty });
+        self.all_fields.decl_ty.push(quote_spanned! { span => #ty });
+        self.all_fields.init_ty.push(quote_spanned! { span => #ty });
         self.all_fields.ref_ty.push(quote_spanned!{ span => &'a #ty });
         self.all_fields.mut_ty.push(quote_spanned!{ span => &'a #ty });
         self.all_fields.init_field.push(quote_spanned!{ span => self.#ident });
@@ -607,7 +604,7 @@ impl FieldGroups {
 
         self.varlen_fields.meta.push(meta.clone());
         self.varlen_fields.init_ty_params.push(init_ident.clone());
-        self.varlen_fields.init_ty_constraints.push(quote_spanned! { span => ::varlen::VarLenInitializer<#ty> });
+        self.varlen_fields.init_ty_constraints.push(quote_spanned! { span => ::varlen::Initializer<#ty> });
         self.varlen_fields.layout_idents.push(layout_ident.clone());
         self.varlen_fields.layout_ty.push(quote_spanned! { span => <#ty as ::varlen::VarLen>::Layout });
         self.varlen_fields.cat_field_cautious.push(quote_spanned! { span =>
@@ -627,8 +624,8 @@ impl FieldGroups {
         });
 
         self.all_fields.meta.push(meta);
-        self.all_fields.decl_ty.push(quote! { ::varlen::VarLenField<#ty> });
-        self.all_fields.init_ty.push(quote! { #init_ident });
+        self.all_fields.decl_ty.push(quote_spanned! { span =>::varlen::marker::FieldMarker<#ty> });
+        self.all_fields.init_ty.push(quote_spanned! { span => #init_ident });
         self.all_fields.ref_ty.push(quote_spanned!{ span => &'a #ty });
         self.all_fields.mut_ty.push(quote_spanned!{ span => ::core::pin::Pin<&'a mut #ty> });
         self.all_fields.init_field.push(quote_spanned! { span =>
@@ -670,7 +667,7 @@ impl FieldGroups {
         self.varlen_fields.init_ty_params.push(init_ident.clone());
         self.varlen_fields.init_ty_constraints.push(quote_spanned! { span => ::varlen::ArrayInitializer<#elem_ty> });
         self.varlen_fields.layout_idents.push(len_ident.clone());
-        self.varlen_fields.layout_ty.push(quote! { usize });
+        self.varlen_fields.layout_ty.push(quote_spanned! { span => usize });
         self.varlen_fields.cat_field_cautious.push(quote_spanned! { span =>
             ::varlen::macro_support::cat_array_field_cautious::<#elem_ty>(
                 #mod_name::lengths::#len_ident(lengths), size)
@@ -690,8 +687,8 @@ impl FieldGroups {
         });
 
         self.all_fields.meta.push(meta);
-        self.all_fields.init_ty.push(quote! { #init_ident });
-        self.all_fields.decl_ty.push(quote! { ::varlen::VarLenArray<#elem_ty> });
+        self.all_fields.init_ty.push(quote_spanned! { span => #init_ident });
+        self.all_fields.decl_ty.push(quote_spanned! { span => ::varlen::marker::ArrayMarker<#elem_ty> });
         self.all_fields.ref_ty.push(quote_spanned!{ span => &'a [#elem_ty] });
         self.all_fields.mut_ty.push(quote_spanned!{ span => &'a mut [#elem_ty] });
         self.all_fields.init_field.push(quote_spanned! { span =>

@@ -100,6 +100,7 @@ pub mod init;
 pub mod owned;
 pub mod vbox;
 pub mod seq;
+pub mod marker;
 
 #[cfg(test)]
 mod test_type;
@@ -117,113 +118,57 @@ use core::ptr::NonNull;
 ///    * because of the variable-length
 ///  * 
 pub unsafe trait VarLen {
-    // Layout
+    /// This type's internal dynamic calculations of where its tail fields are.
+    /// 
+    /// All you can do with this type is get the overall `size()`, and pass the layout
+    /// to `drop_tail()` or `Initializer::initialize()`.
     type Layout: Layout;
+
+    /// Calculates the layout of the internal fields of this object.
     fn calculate_layout(&self) -> Self::Layout;
+
+    /// Alignment of this type.
+    /// 
+    /// To be safe, trait implementor must guarantee:
+    /// * `ALIGN` is a power of 2.
+    /// * `ALIGN` is at least equal to `core::mem::align_of::<Self>()`.
     const ALIGN: usize;
 
-    /// Drop support
+    /// If true, `drop_tail()` is a noop.
     const NEEDS_DROP_TAIL: bool;
-    // Safety requirements:
-    //  * must be called at most once on self
-    //  * must not access tail fields after this call
-    //  * layout must have been returned by `calculate_layout()` on 
-    //    this object or its initializer.
+
+    /// Drops the tail of `self`. The "tail" is the part of the type that Rust's automatic
+    /// `Drop` logic _doesn't_ take care of.
+    /// 
+    /// Safety requirements:
+    ///  * must be called at most once on `self`
+    ///  * caller must not access tail fields after this call
+    ///  * layout must have been returned by `calculate_layout()` on 
+    ///    this object or `calculate_layout_cautious()` on its initializer.
     unsafe fn drop_tail(self: core::pin::Pin<&mut Self>, layout: Self::Layout);
 }
 
+/// A layout of a variable-length object.
 pub trait Layout {
+    /// The size of the object in bytes.
     fn size(&self) -> usize;
 }
 
-// Implementations:
-//    VarLen + (), ref = &T
-//      InlineArray, ref = &[T]
-//      InlineString, ref = &str
-//    Array + usize, ref = &[T]
-//    String + usize, ref = &str
-//
-// CallerData:
-//  * can specify CallerData on fields, referencing header
-//  * can declare structs to have CallerData, which must be
-//    passed in by the caller
-//  * CallerData for Array<T> is `(usize, T::CallerData)`
-//    * this is flexible enough for 2D arrays, for example
-//    * although much too complex!
-//  * can I have CallerData = an arena?
-//    * sure, why not?
-//    * reference type generally pairs CallerData with the pointer
-//    * naturally gives wide pointers
-//    * tricky question: what is the lifetime of CallerData?
-//      * might need Generic Associated Types... https://blog.rust-lang.org/2021/08/03/GATs-stabilization-push.html
-//  * decision: no support for PartialVarLen for now. Continue to
-//    special-case arrays, as before.
-//    * avoids any Generic Associated Types / lifetimes issues
-//    * avoids needing a new set of &[T] types which also propagate
-//      CallerData
-// pub unsafe trait PartialVarLen {
-//     type Layout: Layout;
-//     type CallerData: Copy;  // for [T] this is usize (the length)
-//     type FullRef;  // for [T] this is &[T]
-//     type FullMut;  // for [T] this is &mut [T].
-
-//     fn calculate_layout(&self, caller_data: &CallerData) -> Self::Layout;
-//     const ALIGN: usize;
-// }
-
-// pub trait VarLen: PartialVarLen<ExtraData = ()> {}
-
 /// Trait implementor promises:
-///  * casting dst to Pin<&mut T> after calling initialize yields a valid reference.
+///  * casting dst to `&mut [T]` after calling initialize yields a valid reference.
 pub unsafe trait ArrayInitializer<T> {
+    /// Fills the slice.
     unsafe fn initialize(self, dst: NonNull<[T]>);
 }
 
 /// Trait implementor promises:
 ///  * 'layout' is correct for the writes in 'initialize'
 ///  * after 'initialize', the 'VarLen::layout' matches the 'SizedInitializer::layout'.
-pub unsafe trait VarLenInitializer<T: VarLen> {
-    fn calculate_layout(&self) -> Option<T::Layout>;
+pub unsafe trait Initializer<T: VarLen> {
+    fn calculate_layout_cautious(&self) -> Option<T::Layout>;
     // Safety:
     //  * must be called with layout from `calculate_layout`
     //  * `dst` must be writable, with size as specified by `self.calculate_layout().size()`
     unsafe fn initialize(self, dst: NonNull<T>, layout: T::Layout);
 }
 
-/// Marker type for a variable-length field of a `#[define_varlen]` struct.
-/// 
-/// Fields of this type in a struct mean that there is a trailing variable-length array
-/// in this struct. By desing, nn object of type `VarLenField` cannot be directly 
-/// constructed within safe code; instead, you must construct the struct around it,
-/// using one of the safe variable-length-struct initialization methods such as 
-/// `varlen::boxed::Box::new`.
-pub struct VarLenField<T>(core::marker::PhantomPinned, core::marker::PhantomData<T>);
-
-impl<T> VarLenField<T> {
-    /// The only way to construct a `VarLenField`.
-    /// 
-    /// Safety: when using this to construct a variable-length type, you must also allocate
-    /// and initialize the tail of the type.
-    pub unsafe fn new_unchecked() -> Self {
-        VarLenField(core::marker::PhantomPinned, core::marker::PhantomData)
-    }
-}
-
-/// Marker type for a variable-length field of a `#[define_varlen]` struct.
-/// 
-/// Fields of this type in a struct mean that there is a trailing variable-length array
-/// in this struct. By desing, nn object of type `VarLenField` cannot be directly 
-/// constructed within safe code; instead, you must construct the struct around it,
-/// using one of the safe variable-length-struct initialization methods such as 
-/// `varlen::boxed::Box::new`.
-pub struct VarLenArray<T>(core::marker::PhantomPinned, core::marker::PhantomData<[T]>);
-
-impl<T> VarLenArray<T> {
-    /// The only way to construct a `VarLenField`.
-    /// 
-    /// Safety: when using this to construct a variable-length type, you must also allocate
-    /// and initialize the tail of the type.
-    pub unsafe fn new_unchecked() -> Self {
-        VarLenArray(core::marker::PhantomPinned, core::marker::PhantomData)
-    }
-}

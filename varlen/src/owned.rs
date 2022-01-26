@@ -1,4 +1,4 @@
-use crate::VarLenInitializer;
+use crate::Initializer;
 
 use super::{Layout, VarLen};
 
@@ -64,7 +64,7 @@ impl<T: VarLen> core::ops::Deref for Owned<'_, T> {
     }
 }
 
-unsafe impl<T: VarLen> VarLenInitializer<T> for Owned<'_, T> {
+unsafe impl<T: VarLen> Initializer<T> for Owned<'_, T> {
     unsafe fn initialize(self, dst: NonNull<T>, layout: T::Layout) {
         // Safety:
         //  * Owned has unique access to its pointer
@@ -75,7 +75,7 @@ unsafe impl<T: VarLen> VarLenInitializer<T> for Owned<'_, T> {
     }
 
     #[inline]
-    fn calculate_layout(&self) -> Option<T::Layout> {
+    fn calculate_layout_cautious(&self) -> Option<T::Layout> {
         Some(T::calculate_layout(&*self))
     }
 }

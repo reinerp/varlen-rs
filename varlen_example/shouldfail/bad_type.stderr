@@ -127,18 +127,17 @@ error[E0277]: the size for values of type `[u32]` cannot be known at compilation
    = note: slice and array elements must have `Sized` type
 
 error[E0277]: the size for values of type `[u32]` cannot be known at compilation time
-   --> shouldfail/bad_type.rs:27:1
-    |
-27  | #[define_varlen]
-    | ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-    |
-    = help: the trait `Sized` is not implemented for `[u32]`
-note: required by a bound in `VarLenArray`
-   --> $WORKSPACE/varlen/src/lib.rs
-    |
-    | pub struct VarLenArray<T>(core::marker::PhantomPinned, core::marker::PhantomData<[T]>);
-    |                        ^ required by this bound in `VarLenArray`
-    = note: this error originates in the attribute macro `define_varlen` (in Nightly builds, run with -Z macro-backtrace for more info)
+  --> shouldfail/bad_type.rs:35:10
+   |
+35 |     arr: [[u32]; 4],
+   |          ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u32]`
+note: required by a bound in `ArrayMarker`
+  --> $WORKSPACE/varlen/src/marker.rs
+   |
+   | pub struct ArrayMarker<T>(core::marker::PhantomPinned, core::marker::PhantomData<[T]>);
+   |                        ^ required by this bound in `ArrayMarker`
 
 error[E0277]: the size for values of type `[u32]` cannot be known at compilation time
    --> shouldfail/bad_type.rs:35:10

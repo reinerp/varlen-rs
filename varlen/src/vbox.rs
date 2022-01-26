@@ -1,4 +1,4 @@
-use super::{Layout, VarLenInitializer, VarLen};
+use super::{Layout, Initializer, VarLen};
 
 use core::alloc as alloc;
 use core::ptr::NonNull;
@@ -14,8 +14,8 @@ fn allocation_overflow() -> ! {
 }
 
 impl<T: VarLen> VBox<T> {
-    pub fn new(init: impl VarLenInitializer<T>) -> Self {
-        let layout = init.calculate_layout().unwrap_or_else(|| allocation_overflow());
+    pub fn new(init: impl Initializer<T>) -> Self {
+        let layout = init.calculate_layout_cautious().unwrap_or_else(|| allocation_overflow());
         let alloc_layout = alloc::Layout::from_size_align(layout.size(), T::ALIGN).unwrap_or_else(|_| allocation_overflow());
         unsafe {
             let p = std::alloc::alloc(alloc_layout) as *mut T;
@@ -73,7 +73,7 @@ impl<T: VarLen> core::ops::Deref for VBox<T> {
     }
 }
 
-unsafe impl<T: VarLen> VarLenInitializer<T> for VBox<T> {
+unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
     unsafe fn initialize(self, dst: NonNull<T>, layout: T::Layout) {
         let size = layout.size();
         // Safety: we already called from_size_align in the VBox constructor.
@@ -88,7 +88,7 @@ unsafe impl<T: VarLen> VarLenInitializer<T> for VBox<T> {
     }
 
     #[inline]
-    fn calculate_layout(&self) -> Option<T::Layout> {
+    fn calculate_layout_cautious(&self) -> Option<T::Layout> {
         Some(T::calculate_layout(&*self))
     }
 }

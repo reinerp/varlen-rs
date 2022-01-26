@@ -1,4 +1,4 @@
-use crate::{VarLen, VarLenInitializer, Layout, ArrayInitializer};
+use crate::{VarLen, Initializer, Layout, ArrayInitializer};
 use core::pin::Pin;
 use core::ptr::NonNull;
 use core::mem::MaybeUninit;
@@ -62,8 +62,8 @@ pub struct SingleByteArrayInit<TailInit> {
     pub tail: TailInit,
 }
 
-unsafe impl<TailInit: ArrayInitializer<u8>> VarLenInitializer<SingleByteArray> for SingleByteArrayInit<TailInit> {
-    fn calculate_layout(&self) -> Option<SBALayout> {
+unsafe impl<TailInit: ArrayInitializer<u8>> Initializer<SingleByteArray> for SingleByteArrayInit<TailInit> {
+    fn calculate_layout_cautious(&self) -> Option<SBALayout> {
         let tail_offset = core::mem::size_of::<Self>();
         let array_len = self.len;
         let size = tail_offset.checked_add(self.len)?;
