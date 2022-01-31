@@ -111,6 +111,8 @@ pub use varlen_macro::define_varlen;
 pub use vbox::VBox;
 pub use owned::Owned;
 pub use seq::Seq;
+pub use array::Array;
+pub use crate::str::Str;
 use core::ptr::NonNull;
 
 /// Trait describing variable-length types.

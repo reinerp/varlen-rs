@@ -48,6 +48,7 @@ macro_rules! varlen_newtype {
             }
         }
 
+        #[allow(rustdoc::missing_doc_code_examples)]
         impl $(< $($($generic_params)*),* >)* $outer $(< $($($generics_apply)*),* >)* {
             $refvis fn $ref(&self) -> & $inner {
                 &self.0

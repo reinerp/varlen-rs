@@ -362,7 +362,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     ///   is invalidated by any mutable operation that removes the specified element, or any earlier
     ///   element, from the sequence.
     /// 
-    /// For a safe variant, see [`from_offset`].
+    /// For a safe variant, see [`Self::from_offset`].
     #[inline]
     pub unsafe fn from_offset_unchecked(&self, offset: usize) -> &T {
         debug_assert!(offset < self.occupied_offsets);
@@ -384,7 +384,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     ///   is invalidated by any mutable operation that removes the specified element, or any earlier
     ///   element, from the sequence.
     /// 
-    /// For a safe variant, see [`from_offset_mut`].
+    /// For a safe variant, see [`Self::from_offset_mut`].
     #[inline]
     pub unsafe fn from_offset_unchecked_mut(&mut self, offset: usize) -> Pin<&mut T> {
         debug_assert!(offset < self.occupied_offsets);

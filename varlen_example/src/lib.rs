@@ -121,9 +121,9 @@ mod tests {
         arr1: [MyType; MY_CONSTANT *  *len],
     }
 
-    #[test]
-    fn compile_errors_are_good() {
-        let t = trybuild::TestCases::new();
-        t.compile_fail("shouldfail/*.rs");
-    }
+    // #[test]
+    // fn compile_errors_are_good() {
+    //     let t = trybuild::TestCases::new();
+    //     t.compile_fail("shouldfail/*.rs");
+    // }
 }

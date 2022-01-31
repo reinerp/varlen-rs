@@ -4,7 +4,7 @@ use core::alloc as alloc;
 use core::ptr::NonNull;
 use core::pin::Pin;
 
-/// [`Box<T>`], but for [`VarLen`] types T.
+/// [`Box<T>`], but for [`VarLen`] types `T`.
 pub struct VBox<T: VarLen>(NonNull<T>);
 
 #[inline(never)]
