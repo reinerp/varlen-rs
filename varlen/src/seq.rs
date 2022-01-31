@@ -1,3 +1,47 @@
+#![doc = svgbobdoc::transform!(
+    //! A sequence of variable-length objects in a flat buffer.
+    //! 
+    //! For example, the [`Seq<Str<u8>>`] representation of `["hello", "good", "world!"] is:
+    //! 
+    //! ```svgbob
+    //! "Seq"
+    //! +------+--------+--------------+--------------+
+    //! | base | len: 3 | occupied_end | capacity_end |
+    //! +------+--------+--------------+--------------+
+    //!    |                   |              |
+    //!    |                   |              '----------------------.
+    //!    '-.                 '-----------------.                   |
+    //!      |                                   |                   |
+    //!      v  "Storage"                        v                   v
+    //!      +---+-------+---+------+---+--------+-------------------+
+    //!      | 5 | hello | 4 | good | 6 | world! | "<uninitialized>" |
+    //!      +---+-------+---+------+---+--------+-------------------+
+    //! ```
+    //! 
+    //! Like [`Vec<T>`] this type is a sequence of objects supporting amortized-O(1) [`push()`](`Seq::push`).
+    //! Unlike [`Vec<T>`], once an element has been pushed onto the sequence, its size cannot change. Also
+    //! unlike [`Vec<T>`] there is no random access to the `n`th element of the sequence; access is primarily
+    //! sequential although some indexing options exist. (TODO: explain)
+    //! 
+    //! # Examples
+    //! 
+    //! ```
+    //! # use varlen::{Seq, Str};
+    //! let mut seq: Seq<Str> = Seq::new();
+    //! seq.push(Str::copy_from_str("hello"));
+    //! seq.push(Str::copy_from_str("good"));
+    //! seq.push(Str::copy_from_str("world!"));
+    //! let v: Vec<&str> = seq.iter().map(|s| &s[..]).collect();
+    //! assert_eq!(vec!["hello", "good", "world!"], v);
+    //! ```
+    //! 
+    //! # Module contents
+    //! 
+    //! The main type is [`Array<T>`], valid length types for the array are [`ArrayLen`], its memory layout is
+    //! calculated and stored in [`ArrayLayout`], and its general initializer is [`SizedInit`].
+    )]
+    
+
 use crate::owned::Owned;
 use crate::{Initializer, Layout, VarLen};
 use core::alloc;
@@ -168,7 +212,77 @@ impl private::Sealed for CheckedIndexing {
 }
 impl Indexing for CheckedIndexing {}
 
-/// A sequence of variable-length objects.
+#[doc = svgbobdoc::transform!(
+/// A sequence of variable-length objects in a flat buffer.
+/// 
+/// For example, the [`Seq<Str<u8>>`] representation of `["hello", "good", "world!"] is:
+/// 
+/// ```svgbob
+/// "Seq"
+/// +------+--------+--------------+--------------+
+/// | base | len: 3 | occupied_end | capacity_end |
+/// +------+--------+--------------+--------------+
+///    |                   |              |
+///    |                   |              '----------------------.
+///    '-.                 '-----------------.                   |
+///      |                                   |                   |
+///      v  "Storage"                        v                   v
+///      +---+-------+---+------+---+--------+-------------------+
+///      | 5 | hello | 4 | good | 6 | world! | "<uninitialized>" |
+///      +---+-------+---+------+---+--------+-------------------+
+/// ```
+/// 
+/// For comparison, the [`Vec<Box<str>>`] representation is:
+/// 
+/// ```svgbob
+/// "Seq"
+/// +------+--------+-------------+
+/// | base | len: 3 | capacity: 4 |
+/// +------+--------+-------------+
+///    |
+///    |
+///    '-.
+///      |
+///      v  "Storage"
+///      +-------+--------+-------+--------+-------+---------+-------------------+
+///      |  ptr  | len: 5 |  ptr  | len: 4 |  ptr  | len: 6  | "<uninitialized>" |
+///      +-------+--------+-------+--------+-------+---------+-------------------+
+///          |                |                |
+///          |                |                |
+///      .---'                |                '-----------.
+///      |                    |                            |
+///      v                    v                            v
+///      +-----------+        +----------+                 +-----------+
+///      | "'hello'" |        | "'good'" |                 | "'world!" |     
+///      +-----------+        +----------+                 +-----------+
+/// ```
+/// 
+/// Like [`Vec<T>`] this type is a sequence of objects supporting amortized-O(1) [`push()`](`Seq::push`).
+/// Unlike [`Vec<T>`], once an element has been pushed onto the sequence, its size cannot change. Also
+/// unlike [`Vec<T>`] there is no random access to the `n`th element of the sequence; access is primarily
+/// sequential although some indexing options exist. (TODO: explain)
+/// 
+/// # Examples
+/// 
+/// ```
+/// # use varlen::{Seq, Str};
+/// let mut seq: Seq<Str> = Seq::new();
+/// seq.push(Str::copy_from_str("hello"));
+/// seq.push(Str::copy_from_str("good"));
+/// seq.push(Str::copy_from_str("world!"));
+/// let v: Vec<&str> = seq.iter().map(|s| &s[..]).collect();
+/// assert_eq!(vec!["hello", "good", "world!"], v);
+/// ```
+/// 
+/// # Indexing
+/// 
+/// The storage layout is not built to support 
+/// 
+/// # Module contents
+/// 
+/// The main type is [`Array<T>`], valid length types for the array are [`ArrayLen`], its memory layout is
+/// calculated and stored in [`ArrayLayout`], and its general initializer is [`SizedInit`].
+)]
 pub struct Seq<T: VarLen, Idx: Indexing = UncheckedIndexing> {
     // Actually aligned to T::ALIGN, which is at least as large as core::mem::align_of::<T>().
     //
@@ -207,7 +321,12 @@ pub struct OverflowError;
 
 #[inline(always)]
 unsafe fn add_offsets_fast<T: VarLen>(ptr: NonNull<T>, offsets: usize) -> NonNull<T> {
-    NonNull::new_unchecked((ptr.as_ptr() as *mut u8).wrapping_add(offsets * T::ALIGN) as *mut T)
+    add_bytes_fast(ptr, offsets * T::ALIGN)
+}
+
+#[inline(always)]
+unsafe fn add_bytes_fast<T: VarLen>(ptr: NonNull<T>, bytes: usize) -> NonNull<T> {
+    NonNull::new_unchecked((ptr.as_ptr() as *mut u8).wrapping_add(bytes) as *mut T)
 }
 
 #[inline(always)]
@@ -223,7 +342,7 @@ fn try_realloc<Idx: Indexing>(
     align: usize,
 ) -> Result<(NonNull<u8>, usize), OverflowError> {
     let size_offsets = std::cmp::max(
-        std::cmp::max(minimum_offsets, std::cmp::max(32, align)),
+        std::cmp::max(minimum_offsets, (32 + align - 1) /  align),
         capacity_offsets.checked_mul(2).ok_or(OverflowError)?,
     );
     let size_bytes = size_offsets.checked_mul(align).ok_or(OverflowError)?;
@@ -249,6 +368,20 @@ fn must_realloc<Idx: Indexing>(
 ) -> (NonNull<u8>, usize) {
     try_realloc::<Idx>(ptr, capacity_offsets, minimum_offsets, align)
         .unwrap_or_else(|_| layout_overflow())
+}
+
+impl<T: VarLen> Seq<T> {
+    #[inline]
+    pub fn new_sequential() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: VarLen> Seq<T, CheckedIndexing> {
+    #[inline]
+    pub fn new_indexable() -> Self {
+        Self::new()
+    }
 }
 
 impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
@@ -310,6 +443,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
         let elem_offset = self.occupied_offsets;
         unsafe {
             Idx::mark_offset_valid(self.ptr, self.capacity_offsets, elem_offset);
+            println!("Writing at {}", elem_offset);
             init.initialize(add_offsets_fast(self.ptr, elem_offset), layout);
         }
         self.occupied_offsets = occupied_plus;
@@ -531,7 +665,8 @@ impl<'a, T: VarLen> Iterator for Iter<'a, T> {
         if self.len_elements > 0 {
             let t = unsafe { self.ptr.as_ref() };
             let size = t.calculate_layout().size();
-            self.ptr = unsafe { add_offsets_fast(self.ptr, round_up_fast(size, T::ALIGN)) };
+            println!("Next returning ptr: {:?}", self.ptr);
+            self.ptr = unsafe { add_bytes_fast(self.ptr, round_up_fast(size, T::ALIGN)) };
             self.len_elements -= 1;
             Some(t)
         } else {
@@ -583,7 +718,7 @@ impl<'a, T: VarLen> Iterator for IterMut<'a, T> {
         if self.len_elements > 0 {
             let t = unsafe { Pin::new_unchecked(self.ptr.as_mut()) };
             let size = t.calculate_layout().size();
-            self.ptr = unsafe { add_offsets_fast(self.ptr, round_up_fast(size, T::ALIGN)) };
+            self.ptr = unsafe { add_bytes_fast(self.ptr, round_up_fast(size, T::ALIGN)) };
             self.len_elements -= 1;
             Some(t)
         } else {
@@ -626,7 +761,7 @@ impl<'a, T: VarLen> Iterator for OwnedElems<'a, T> {
         if self.len_elements > 0 {
             let t = unsafe { Owned::from_raw(self.ptr) };
             let size = T::calculate_layout(&*t).size();
-            self.ptr = unsafe { add_offsets_fast(self.ptr, round_up_fast(size, T::ALIGN)) };
+            self.ptr = unsafe { add_bytes_fast(self.ptr, round_up_fast(size, T::ALIGN)) };
             self.len_elements -= 1;
             Some(t)
         } else {
@@ -659,5 +794,16 @@ impl<'a, T: VarLen> Drop for OwnedElems<'a, T> {
                 drop(t);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn push_box() {
+        use crate::{Seq, VBox, Str};
+        let s: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+        let mut seq = Seq::new_sequential();
+        seq.push(s);
     }
 }

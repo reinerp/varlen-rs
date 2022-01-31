@@ -82,7 +82,7 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
         //  * Owned has unique access to its pointer
         //  * dst is unique
         //  * dst size is guaranteed by the SizedInitializer call
-        core::ptr::copy_nonoverlapping(self.0.as_ptr(), dst.as_ptr(), size);
+        core::ptr::copy_nonoverlapping(self.0.as_ptr().cast::<u8>(), dst.as_ptr().cast::<u8>(), size);
         std::alloc::dealloc(self.0.as_ptr() as *mut u8, layout);
         core::mem::forget(self);
     }
