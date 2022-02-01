@@ -1,10 +1,10 @@
 #![doc = svgbobdoc::transform!(
     //! A sequence of variable-length objects in a flat buffer.
     //! 
-    //! For example, the [`Seq<Str<u8>>`] representation of `["hello", "good", "world!"] is:
+    //! For example, the [`Seq<Str<u8>>`] representation of `["hello", "good", "world!"]` is:
     //! 
     //! ```svgbob
-    //! "Seq"
+    //! "Seq  (actual layout may vary)"
     //! +------+--------+--------------+--------------+
     //! | base | len: 3 | occupied_end | capacity_end |
     //! +------+--------+--------------+--------------+
@@ -18,12 +18,14 @@
     //!      +---+-------+---+------+---+--------+-------------------+
     //! ```
     //! 
-    //! Like [`Vec<T>`] this type is a sequence of objects supporting amortized-O(1) [`push()`](`Seq::push`).
     //! Unlike [`Vec<T>`], once an element has been pushed onto the sequence, its size cannot change. Also
     //! unlike [`Vec<T>`] there is no random access to the `n`th element of the sequence; access is primarily
     //! sequential although some indexing options exist. (TODO: explain)
     //! 
     //! # Examples
+    //! 
+    //! Like [`Vec<T>`], this type is a sequence of objects supporting amortized-O(1) [`push()`](`Seq::push`), and
+    //! you can iterate through elements of the sequence:
     //! 
     //! ```
     //! # use varlen::{Seq, Str};
@@ -37,7 +39,11 @@
     //! 
     //! # Module contents
     //! 
-    //! The main type is [`Array<T>`], valid length types for the array are [`ArrayLen`], its memory layout is
+    //! The main type is [`Seq<T>`]. It includes iterator types [`Iter<'a, T>`], [`IterMut<'a, T>`] and
+    //! [`OwnedElems<'a, T>`]. 
+    //! 
+    //! Types [`CheckedIndexing`] and [`UncheckedIndexing`] parametrize the [`Seq<T>`] and control whether
+    //! random accessing is available valid length types for the array are [`ArrayLen`], its memory layout is
     //! calculated and stored in [`ArrayLayout`], and its general initializer is [`SizedInit`].
     )]
     
@@ -215,10 +221,10 @@ impl Indexing for CheckedIndexing {}
 #[doc = svgbobdoc::transform!(
 /// A sequence of variable-length objects in a flat buffer.
 /// 
-/// For example, the [`Seq<Str<u8>>`] representation of `["hello", "good", "world!"] is:
+/// For example, the [`Seq<Str<u8>>`] representation of `["hello", "good", "world!"]` is:
 /// 
 /// ```svgbob
-/// "Seq"
+/// "Seq (actual layout may vary)"
 /// +------+--------+--------------+--------------+
 /// | base | len: 3 | occupied_end | capacity_end |
 /// +------+--------+--------------+--------------+
@@ -232,37 +238,10 @@ impl Indexing for CheckedIndexing {}
 ///      +---+-------+---+------+---+--------+-------------------+
 /// ```
 /// 
-/// For comparison, the [`Vec<Box<str>>`] representation is:
-/// 
-/// ```svgbob
-/// "Seq"
-/// +------+--------+-------------+
-/// | base | len: 3 | capacity: 4 |
-/// +------+--------+-------------+
-///    |
-///    |
-///    '-.
-///      |
-///      v  "Storage"
-///      +-------+--------+-------+--------+-------+---------+-------------------+
-///      |  ptr  | len: 5 |  ptr  | len: 4 |  ptr  | len: 6  | "<uninitialized>" |
-///      +-------+--------+-------+--------+-------+---------+-------------------+
-///          |                |                |
-///          |                |                |
-///      .---'                |                '-----------.
-///      |                    |                            |
-///      v                    v                            v
-///      +-----------+        +----------+                 +-----------+
-///      | "'hello'" |        | "'good'" |                 | "'world!" |     
-///      +-----------+        +----------+                 +-----------+
-/// ```
-/// 
-/// Like [`Vec<T>`] this type is a sequence of objects supporting amortized-O(1) [`push()`](`Seq::push`).
-/// Unlike [`Vec<T>`], once an element has been pushed onto the sequence, its size cannot change. Also
-/// unlike [`Vec<T>`] there is no random access to the `n`th element of the sequence; access is primarily
-/// sequential although some indexing options exist. (TODO: explain)
-/// 
 /// # Examples
+/// 
+/// Like [`Vec<T>`], this type is a sequence of objects supporting amortized-O(1) [`push()`](`Seq::push`), and
+/// you can iterate through elements of the sequence:
 /// 
 /// ```
 /// # use varlen::{Seq, Str};
@@ -274,14 +253,139 @@ impl Indexing for CheckedIndexing {}
 /// assert_eq!(vec!["hello", "good", "world!"], v);
 /// ```
 /// 
+/// *Unlike* [`Vec<T>`], there is no random access to the `n`th element of the sequence, 
+/// Unlike [`Vec<T>`], once an element has been pushed onto the sequence, its size cannot change.
+/// 
 /// # Indexing
 /// 
-/// The storage layout is not built to support 
+/// Since the `T` elements are variable-sized, the address of the `n`th element in the storage 
+/// cannot directly be calculated from `n`. This means that random access to the `n`th element is 
+/// not available in the [`Seq<T>`] type. However, some alternatives exist, either in variations 
+/// of the [`Seq<T>`] type or in different kinds of indexing.
 /// 
-/// # Module contents
+/// ## Indexing by offset
+/// Instead of indexing by element index, you may index by *offset*. The 
+/// offset of an element is defined to be its position in the storage buffer, in units of 
+/// `T::ALIGN`. Offsets start at 0 and increase as you push elements onto a sequence, but they may
+/// skip values:
 /// 
-/// The main type is [`Array<T>`], valid length types for the array are [`ArrayLen`], its memory layout is
-/// calculated and stored in [`ArrayLayout`], and its general initializer is [`SizedInit`].
+/// ```
+/// # use varlen::{Seq, Str};
+/// let mut seq: Seq<Str<u16>> = Seq::new();
+/// assert_eq!(0, seq.offset());
+/// seq.push(Str::try_copy_from_str("hello").unwrap());
+/// // "hello" takes u16 length, plus 5 bytes storage. Total: 7 bytes, which is 
+/// // `div_round_up(7, Str::<u16>::ALIGN)=4` offsets.
+/// assert_eq!(4, seq.offset());
+/// seq.push(Str::try_copy_from_str("fantastic").unwrap());
+/// assert_eq!(10, seq.offset());
+/// seq.push(Str::try_copy_from_str("world").unwrap());
+/// assert_eq!(14, seq.offset());
+/// ```
+/// 
+/// In [`Seq<T>`] indexing by offset is available, but unsafe, because the data structure doesn't
+/// contain enough information to validate an offset:
+/// 
+/// ```
+/// // ... continued
+/// # use varlen::{Seq, Str};
+/// # let mut seq: Seq<Str<u16>> = Seq::new();
+/// # assert_eq!(0, seq.offset());
+/// # seq.push(Str::try_copy_from_str("hello").unwrap());
+/// # // "hello" takes u16 length, plus 5 bytes storage. Total: 7 bytes, which is 
+/// # // `div_round_up(7, Str::<u16>::ALIGN)=4` offsets.
+/// # assert_eq!(4, seq.offset());
+/// # seq.push(Str::try_copy_from_str("fantastic").unwrap());
+/// # assert_eq!(10, seq.offset());
+/// # seq.push(Str::try_copy_from_str("world").unwrap());
+/// # assert_eq!(14, seq.offset());
+/// let s = unsafe { seq.from_offset_unchecked(4) };
+/// assert_eq!("fantastic", &s[..]);
+/// ```
+/// 
+/// In [`Seq<T, CheckedIndexing>`] indexing by offset is available and safe:
+/// 
+/// ```
+/// # use varlen::{Seq, Str};
+/// # use varlen::seq::CheckedIndexing;
+/// let mut seq: Seq<Str<u16>, CheckedIndexing> = Seq::new();
+/// seq.push(Str::try_copy_from_str("hello").unwrap());
+/// assert_eq!(4, seq.offset());
+/// seq.push(Str::try_copy_from_str("fantastic").unwrap());
+/// seq.push(Str::try_copy_from_str("world").unwrap());
+/// assert_eq!("fantastic", &seq.from_offset(4)[..]);
+/// // Would panic: seq.from_offset(5)
+/// ```
+/// 
+/// To make this possible, [`Seq<T, CheckedIndexing>`] stores a bitmap indicating where the start
+/// of every element in the storage is:
+///
+/// ```svgbob
+/// "Seq (actual layout may vary)"
+/// +------+--------+--------------+--------------+
+/// | base | len: 3 | occupied_end | capacity_end |
+/// +------+--------+--------------+--------------+
+///    |                   |              |
+///    |                   |              '----------------------.
+///    '-.                 '-----------------.                   |
+///      |                                   |                   |
+///      v  "Storage"                        v                   v
+///      +---+-------+---+-------+---+-------+-------------------+
+///      | 5 | hello | 4 | good  | 6 | world | "<uninitialized>" |
+///      +---+-------+---+-------+---+-------+-------------------+
+///      ^           ^           ^       
+///      |           |           |
+///      v           v           v
+///      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-------------------+
+///      |1|0|0|0|0|0|1|0|0|0|0|0|1|0|0|0|0|0| "<uninitialized>" |
+///      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-------------------+
+///      "Bitmap"
+/// ```
+/// 
+/// Maintaining this bitmap adds a memory overhead of 1 bit per `T::ALIGN` bytes (at most 12.5% 
+/// overhead in the case `T::ALIGN=1`), and slightly increases the cost of [`Seq::push`].
+/// 
+/// ## Indexing by element index
+/// 
+/// Using the type [`Seq<T, Index<N>>`] or [`Seq<T, IndexAndOffset<N>>`] it is possible to index
+/// by element index:
+/// 
+/// <TODO: example>
+/// 
+/// This is achieved by using an index table that stores the offset of every `N`th element,
+/// shown here with `N=2`:
+///
+/// ```svgbob
+/// "Seq (actual layout may vary)"
+/// +------+--------+--------------+--------------+
+/// | base | len: 3 | occupied_end | capacity_end |
+/// +------+--------+--------------+--------------+
+///    |                   |              |
+///    |                   |              '----------------------.
+///    '-.                 '-----------------.                   |
+///      |                                   |                   |
+///      v  "Storage"                        v                   v
+///      +---+-------+---+-------+---+-------+-------------------+
+///      | 5 | hello | 4 | good  | 6 | world | "<uninitialized>" |
+///      +---+-------+---+-------+---+-------+-------------------+
+///      ^                       ^       
+///      |                       |
+///      '-.      .--------------'
+///        |      |
+///      +-----+-----+-------------------+
+///      | 0   | 8   | "<uninitialized>" |
+///      +-----+-----+-------------------+
+///      "Index table"
+/// ```
+/// 
+/// To find the offset of element `i`, we look up the offset of `(i / N) * N` in this table 
+/// (the nearest element before `i`), and then scan sequentially forward from there until we reach
+/// element `i`. When using the type [`Seq<T, IndexAndOffset<N>>`], *both* the index table and the
+/// bitmap are present, and the "scan sequentially forward" operation proceeds by fast bit operations
+/// on the bitmap.
+/// 
+/// This costs `std::mem::size_of::<T>() / N` bytes of overhead per stored element.
+
 )]
 pub struct Seq<T: VarLen, Idx: Indexing = UncheckedIndexing> {
     // Actually aligned to T::ALIGN, which is at least as large as core::mem::align_of::<T>().
@@ -405,13 +509,13 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
 
     /// Number of offsets (units of `T::ALIGN`) in the storage.
     #[inline]
-    pub fn capacity_offsets(&self) -> usize {
+    pub fn capacity_in_offsets(&self) -> usize {
         self.capacity_offsets
     }
 
-    /// Number of offsets (units of `T::ALIGN`) currently stored.
+    /// Offset of the next element to be added to the sequence.
     #[inline]
-    pub fn len_offsets(&self) -> usize {
+    pub fn offset(&self) -> usize {
         self.occupied_offsets
     }
 
