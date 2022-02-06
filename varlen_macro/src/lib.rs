@@ -95,6 +95,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             init_field: all_init_field,
             ref_ty: all_ref_ty,
             mut_ty: all_mut_ty,
+            mut_layout_ty: all_mut_layout_ty,
             ref_field: all_ref_field,
             mut_field: all_mut_field,
         },
@@ -119,6 +120,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             use super::*;
 
             /// Array offsets and lengths for all trailing arrays and nested types.
+            #[derive(PartialEq, Eq)]
             #tyvis_inner struct VarLenLayout {
                 pub(super) size: usize,
                 #(
@@ -164,6 +166,13 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 #(
                     #all_attr
                     #all_vis_inner #all_ident: #all_ref_ty,
+                )*
+            }
+
+            #tyvis_inner struct MutsLayout<'a> {
+                #(
+                    #all_attr
+                    #all_vis_inner #all_ident: #all_mut_layout_ty,  
                 )*
             }
         }
@@ -282,6 +291,22 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                         )*
                     }
                 }
+            }
+
+            #tyvis fn with_muts_layout<R>(mut self: ::core::pin::Pin<&mut Self>, f: impl FnOnce(#mod_name::MutsLayout) -> R) -> R {
+                let layout = ::varlen::VarLen::calculate_layout(self.as_ref().get_ref());
+                let muts = unsafe {
+                    let mut_ref = self.as_mut().get_unchecked_mut();
+                    let mut_ptr = mut_ref as *mut _;
+                    #mod_name::MutsLayout {
+                        #(
+                            #all_ident: #all_mut_field,
+                        )*
+                    }
+                };
+                let r = f(muts);
+                ::core::assert!(layout == ::varlen::VarLen::calculate_layout(self.as_ref().get_ref()));
+                r
             }
 
             /*
@@ -502,6 +527,8 @@ struct AllFields {
     ref_ty: Vec<TokenStream>,
     /// Mutable reference type, with lifetime 'a.
     mut_ty: Vec<TokenStream>,
+    /// Mutable reference type, with lifetime 'a. Even #[controls_layout] fields are mutable here.
+    mut_layout_ty: Vec<TokenStream>,
     /// Writes to the tail if necessary, then evaluates to the initializer for this field.
     init_field: Vec<TokenStream>,
     /// creates a reference to this field, given that '&self, layout: Layout' is in scope
@@ -518,6 +545,7 @@ impl AllFields {
             init_ty: Vec::new(),
             ref_ty: Vec::new(),
             mut_ty: Vec::new(),
+            mut_layout_ty: Vec::new(),
             init_field: Vec::new(),
             ref_field: Vec::new(),
             mut_field: Vec::new(),
@@ -567,6 +595,7 @@ impl FieldGroups {
         self.all_fields.init_ty.push(quote_spanned! { span => #ty });
         self.all_fields.ref_ty.push(quote_spanned!{ span => &'a #ty });
         self.all_fields.mut_ty.push(quote_spanned!{ span => &'a mut #ty });
+        self.all_fields.mut_layout_ty.push(quote_spanned!{ span => &'a mut #ty });
         self.all_fields.init_field.push(quote_spanned!{ span => self.#ident });
         self.all_fields.ref_field.push(quote_spanned!{ span => &self.#ident });
         self.all_fields.mut_field.push(quote_spanned!{ span => &mut mut_ref.#ident });
@@ -587,9 +616,10 @@ impl FieldGroups {
         self.all_fields.init_ty.push(quote_spanned! { span => #ty });
         self.all_fields.ref_ty.push(quote_spanned!{ span => &'a #ty });
         self.all_fields.mut_ty.push(quote_spanned!{ span => &'a #ty });
+        self.all_fields.mut_layout_ty.push(quote_spanned!{ span => &'a mut #ty });
         self.all_fields.init_field.push(quote_spanned!{ span => self.#ident });
         self.all_fields.ref_field.push(quote_spanned!{ span => &self.#ident });
-        self.all_fields.mut_field.push(quote_spanned!{ span => &mut_ref.#ident });
+        self.all_fields.mut_field.push(quote_spanned!{ span => &mut mut_ref.#ident });
         Ok(())
     }
 
@@ -628,6 +658,7 @@ impl FieldGroups {
         self.all_fields.init_ty.push(quote_spanned! { span => #init_ident });
         self.all_fields.ref_ty.push(quote_spanned!{ span => &'a #ty });
         self.all_fields.mut_ty.push(quote_spanned!{ span => ::core::pin::Pin<&'a mut #ty> });
+        self.all_fields.mut_layout_ty.push(quote_spanned!{ span => ::core::pin::Pin<&'a mut #ty> });
         self.all_fields.init_field.push(quote_spanned! { span =>
             ::varlen::macro_support::init_field(self.#ident, p, layout.#ident, layout.#layout_ident)
         });
@@ -691,6 +722,7 @@ impl FieldGroups {
         self.all_fields.decl_ty.push(quote_spanned! { span => ::varlen::marker::ArrayMarker<#elem_ty> });
         self.all_fields.ref_ty.push(quote_spanned!{ span => &'a [#elem_ty] });
         self.all_fields.mut_ty.push(quote_spanned!{ span => &'a mut [#elem_ty] });
+        self.all_fields.mut_layout_ty.push(quote_spanned!{ span => &'a mut [#elem_ty] });
         self.all_fields.init_field.push(quote_spanned! { span =>
             ::varlen::macro_support::init_array(self.#ident, p, layout.#ident, layout.#len_ident)
         });

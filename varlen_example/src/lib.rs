@@ -59,7 +59,7 @@ pub struct CoolStructWithMutableFields {
 mod tests {
     use varlen::define_varlen;
     use varlen::vbox::VBox;
-    use varlen::init::FillSequentially;
+    use varlen::init::{FillSequentially, MoveFrom};
 
     #[define_varlen]
     struct T {
@@ -121,6 +121,44 @@ mod tests {
         #[varlen_array]
         arr1: [MyType; MY_CONSTANT *  *len],
     }
+
+    #[define_varlen]
+    pub struct PartialModifyLayout {
+        #[controls_layout]
+        header: u64,
+
+        #[varlen_array]
+        arr: [u8; (*header % 4) as usize],
+    }
+
+    #[test]
+    fn modify_header_field_checked() {
+        let mut b = VBox::<PartialModifyLayout>::new(partial_modify_layout::Init{
+            header: (123 * 4) + 2,
+            arr: MoveFrom([4, 5]),
+        });
+        assert_eq!(*b.refs().header, (123 * 4) + 2);
+        assert_eq!(b.refs().arr, &[4, 5]);
+        b.as_mut().with_muts_layout(|muts| {
+            *muts.header += 5 * 4;
+        });
+        assert_eq!(*b.refs().header, (128 * 4) + 2);
+        assert_eq!(b.refs().arr, &[4, 5]);
+    }
+
+
+    #[test]
+    #[should_panic]
+    fn modify_header_field_bad_layout_panics() {
+        let mut b = VBox::<PartialModifyLayout>::new(partial_modify_layout::Init{
+            header: (123 * 4) + 2,
+            arr: MoveFrom([4, 5]),
+        });
+        b.as_mut().with_muts_layout(|muts| {
+            *muts.header += 2;
+        });
+    }
+
 
     // #[test]
     // fn compile_errors_are_good() {
