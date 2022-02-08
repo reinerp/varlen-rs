@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_doc_code_examples)]
 
-#![doc = svgbobdoc::transform!(
+#![doc = crate::make_svgbobdoc!(
     //! A string with inline storage. 
     //! 
     //! This consists of an integer `length` field, followed immediately by the utf8 string payload. 
@@ -40,7 +40,7 @@ use core::pin::Pin;
 
 varlen_newtype! {
     #[repr(transparent)]
-    #[doc = svgbobdoc::transform!(
+    #[doc = crate::make_svgbobdoc!(
     /// A string with inline storage. 
     /// 
     /// This consists of an integer `length` field, followed immediately by the utf8 string payload. 

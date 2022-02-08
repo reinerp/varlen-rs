@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_doc_code_examples)]
 
-#![doc = svgbobdoc::transform!(
+#![doc = crate::make_svgbobdoc!(
 //! A variable-length array with inline storage. 
 //! 
 //! This consists of an integer `length` field, followed immediately (subject to alignment) by the
@@ -41,7 +41,7 @@ use crate::marker::ArrayMarker;
 use crate::{ArrayInitializer, Initializer, Layout, VarLen};
 use core::pin::Pin;
 
-#[doc = svgbobdoc::transform!(
+#[doc = crate::make_svgbobdoc!(
 /// An variable-length array with inline storage.
 /// 
 /// This consists of an integer length field, followed immediately (subject to alignment) by the

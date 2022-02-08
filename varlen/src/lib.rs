@@ -104,6 +104,8 @@ pub mod array;
 pub mod str;
 pub mod newtype;
 
+mod doc_macro;
+
 #[cfg(test)]
 mod test_type;
 

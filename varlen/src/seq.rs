@@ -1,4 +1,4 @@
-#![doc = svgbobdoc::transform!(
+#![doc = crate::make_svgbobdoc!(
     //! A sequence of variable-length objects in a flat buffer.
     //! 
     //! For example, the [`Seq<Str<u8>>`] representation of `["hello", "good", "world!"]` is:
@@ -218,7 +218,7 @@ impl private::Sealed for CheckedIndexing {
 }
 impl Indexing for CheckedIndexing {}
 
-#[doc = svgbobdoc::transform!(
+#[doc = crate::make_svgbobdoc!(
 /// A sequence of variable-length objects in a flat buffer.
 /// 
 /// For example, the [`Seq<Str<u8>>`] representation of `["hello", "good", "world!"]` is:

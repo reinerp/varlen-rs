@@ -33,10 +33,21 @@ impl<'storage, T: VarLen> Owned<'storage,T> {
     }
 
     /// Layout of the `T`.
-    pub fn alloc_layout(&self) -> alloc::Layout {
+    pub fn get_alloc_layout(&self) -> alloc::Layout {
         unsafe {
             alloc::Layout::from_size_align_unchecked(T::calculate_layout(&*self).size(), T::ALIGN)
         }
+    }
+
+    #[cfg(feature = "bumpalo")]
+    #[inline]
+    pub fn new_in(init: impl Initializer<T>, bump: &'storage bumpalo::Bump) -> Self {
+        let layout = init.calculate_layout_cautious().unwrap();
+        let ptr = bump.alloc_layout(alloc::Layout::from_size_align(layout.size(), T::ALIGN).unwrap()).cast::<T>();
+        unsafe {
+            init.initialize(ptr, layout);
+        }
+        Owned(ptr, PhantomData)
     }
 }
 

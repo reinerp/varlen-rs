@@ -7,9 +7,8 @@ edition = "2021"
 
 [dependencies]
 varlen_macro = { version = "0.1", path = "../varlen_macro" }
-svgbobdoc = "0.3.0-alpha"
-# svgbobdoc2 = { version = "0.1", path = "../svgbobdoc2" }
+bumpalo = { version = "3.9.1", optional = true }
+svgbobdoc = { version = "0.3.0-alpha", optional = true }
 
 [features]
-example_generated = []
 doc = ["svgbobdoc/enable"]
