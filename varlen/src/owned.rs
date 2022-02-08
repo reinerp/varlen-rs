@@ -39,6 +39,12 @@ impl<'storage, T: VarLen> Owned<'storage,T> {
         }
     }
 
+    /// Forgets the obligation to drop this.
+    pub fn leak(self) -> Pin<&'storage mut T> {
+        let Owned(mut ptr, _) = self;
+        unsafe { Pin::new_unchecked(ptr.as_mut()) }
+    }
+
     #[cfg(feature = "bumpalo")]
     #[inline]
     pub fn new_in(init: impl Initializer<T>, bump: &'storage bumpalo::Bump) -> Self {
