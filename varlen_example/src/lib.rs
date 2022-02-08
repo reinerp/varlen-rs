@@ -25,7 +25,6 @@ pub struct CoolStruct {
     pub arr3: [u16; *big_len],
 }
 
-
 #[define_varlen]
 /// This struct contains two lengths and three arrays.
 pub struct CoolStructWithMutableFields {
@@ -54,12 +53,11 @@ pub struct CoolStructWithMutableFields {
     pub arr3: [u16; *big_len],
 }
 
-
 #[cfg(test)]
 mod tests {
     use varlen::define_varlen;
-    use varlen::vbox::VBox;
     use varlen::init::{FillSequentially, MoveFrom};
+    use varlen::vbox::VBox;
 
     #[define_varlen]
     struct T {
@@ -75,7 +73,7 @@ mod tests {
 
     #[test]
     fn field_access_and_modify() {
-        let mut b = VBox::<T>::new(t::Init{
+        let mut b = VBox::<T>::new(t::Init {
             len: 4,
             arr: FillSequentially(|i| i as u8),
             arr2: FillSequentially(|i| i as u16),
@@ -84,9 +82,15 @@ mod tests {
         assert_eq!(b.refs().arr, &[0, 1, 2, 3]);
         b.as_mut().muts().arr[2] = 4;
         assert_eq!(b.refs().arr, &[0, 1, 4, 3]);
-        assert_eq!(b.refs().arr2, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+        assert_eq!(
+            b.refs().arr2,
+            &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        );
         b.as_mut().muts().arr2[2] = 4;
-        assert_eq!(b.refs().arr2, &[0, 1, 4, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+        assert_eq!(
+            b.refs().arr2,
+            &[0, 1, 4, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        );
     }
 
     #[define_varlen]
@@ -119,7 +123,7 @@ mod tests {
         pub len5: usize,
 
         #[varlen_array]
-        arr1: [MyType; MY_CONSTANT *  *len],
+        arr1: [MyType; MY_CONSTANT * *len],
     }
 
     #[define_varlen]
@@ -133,7 +137,7 @@ mod tests {
 
     #[test]
     fn modify_header_field_checked() {
-        let mut b = VBox::<PartialModifyLayout>::new(partial_modify_layout::Init{
+        let mut b = VBox::<PartialModifyLayout>::new(partial_modify_layout::Init {
             header: (123 * 4) + 2,
             arr: MoveFrom([4, 5]),
         });
@@ -146,11 +150,10 @@ mod tests {
         assert_eq!(b.refs().arr, &[4, 5]);
     }
 
-
     #[test]
     #[should_panic]
     fn modify_header_field_bad_layout_panics() {
-        let mut b = VBox::<PartialModifyLayout>::new(partial_modify_layout::Init{
+        let mut b = VBox::<PartialModifyLayout>::new(partial_modify_layout::Init {
             header: (123 * 4) + 2,
             arr: MoveFrom([4, 5]),
         });
@@ -158,7 +161,6 @@ mod tests {
             *muts.header += 2;
         });
     }
-
 
     // #[test]
     // fn compile_errors_are_good() {

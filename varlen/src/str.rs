@@ -1,6 +1,5 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_doc_code_examples)]
-
 #![doc = crate::make_svgbobdoc!(
     //! A string with inline storage. 
     //! 
@@ -32,7 +31,6 @@
     //! assert_eq!(s.calculate_layout().size(), std::mem::size_of::<usize>() + 5)
     //! ```
 )]
-    
 
 use crate::array::{Array, ArrayLen};
 use crate::{varlen_newtype, Initializer};
@@ -41,11 +39,11 @@ use core::pin::Pin;
 varlen_newtype! {
     #[repr(transparent)]
     #[doc = crate::make_svgbobdoc!(
-    /// A string with inline storage. 
-    /// 
-    /// This consists of an integer `length` field, followed immediately by the utf8 string payload. 
+    /// A string with inline storage.
+    ///
+    /// This consists of an integer `length` field, followed immediately by the utf8 string payload.
     /// For example, the [`VBox<String>`](crate::VBox) representation of `"hello"` is:
-    /// 
+    ///
     /// ```svgbob
     /// "VBox"
     /// +----------+
@@ -54,14 +52,14 @@ varlen_newtype! {
     ///      |
     ///      |   Str
     ///      |   +-----------+------+------+------+------+------+
-    ///      '-> | 3: usize  | "'h'"| "'e'"| "'l'"| "'l'"| "'o'"|  
+    ///      '-> | 3: usize  | "'h'"| "'e'"| "'l'"| "'l'"| "'o'"|
     ///          +-----------+------+------+------+------+------+
     /// ```
     ///
     /// Once allocated, the string size may not be modified.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// # use varlen::{VBox, Str};
     /// # use crate::varlen::{Layout, VarLen};
@@ -70,13 +68,13 @@ varlen_newtype! {
     /// // Layout is as specified above:
     /// assert_eq!(s.calculate_layout().size(), std::mem::size_of::<usize>() + 5)
     /// ```
-    /// 
+    ///
     /// # Smaller length field
-    /// 
-    /// You may choose to store the length of the string in a smaller integer type than [`usize`], 
+    ///
+    /// You may choose to store the length of the string in a smaller integer type than [`usize`],
     /// just like in [`Array<T>`](crate::Array). Construction will fail if the string is too long for the
     /// integer type to express:
-    /// 
+    ///
     /// ```
     /// # use varlen::{VBox, Str};
     /// // Short string fits:
@@ -108,9 +106,9 @@ impl<Len: ArrayLen> core::ops::Deref for Str<Len> {
 #[allow(rustdoc::missing_doc_code_examples)]
 impl<Len: ArrayLen> Str<Len> {
     /// Mutable access to the underlying string.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// # use varlen::{VBox, Str};
     /// let mut s = VBox::new(Str::copy_from_str("hello"));
@@ -129,9 +127,9 @@ impl<Len: ArrayLen> Str<Len> {
 #[allow(rustdoc::missing_doc_code_examples)]
 impl Str {
     /// Initializes a [`Str`] by copying from an existing [`&str`].
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// # use varlen::{VBox, Str};
     /// let s = VBox::new(Str::copy_from_str("hello"));
@@ -144,7 +142,7 @@ impl Str {
 #[allow(rustdoc::missing_doc_code_examples)]
 impl<Len: ArrayLen> Str<Len> {
     /// Initializes a [`Str`] from an existing [`&str`], or returns `None` if it doesn't fit in the length field.
-    /// 
+    ///
     /// ```
     /// # use varlen::{VBox, Str};
     /// // Short string fits:

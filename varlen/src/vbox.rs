@@ -1,8 +1,8 @@
-use super::{Layout, Initializer, VarLen};
+use super::{Initializer, Layout, VarLen};
 
-use core::alloc as alloc;
-use core::ptr::NonNull;
+use core::alloc;
 use core::pin::Pin;
+use core::ptr::NonNull;
 
 /// [`Box<T>`], but for [`VarLen`] types `T`.
 pub struct VBox<T: VarLen>(NonNull<T>);
@@ -15,13 +15,16 @@ fn allocation_overflow() -> ! {
 
 impl<T: VarLen> VBox<T> {
     pub fn new(init: impl Initializer<T>) -> Self {
-        let layout = init.calculate_layout_cautious().unwrap_or_else(|| allocation_overflow());
-        let alloc_layout = alloc::Layout::from_size_align(layout.size(), T::ALIGN).unwrap_or_else(|_| allocation_overflow());
+        let layout = init
+            .calculate_layout_cautious()
+            .unwrap_or_else(|| allocation_overflow());
+        let alloc_layout = alloc::Layout::from_size_align(layout.size(), T::ALIGN)
+            .unwrap_or_else(|_| allocation_overflow());
         unsafe {
             let p = std::alloc::alloc(alloc_layout) as *mut T;
             let layout_size = layout.size();
             init.initialize(NonNull::new_unchecked(p), layout);
-            let mut p=  NonNull::new_unchecked(p);
+            let mut p = NonNull::new_unchecked(p);
             // TODO(reinerp): Compare directly on Layout type? Or too much generated code?
             debug_assert_eq!(p.as_mut().calculate_layout().size(), layout_size);
             VBox(p)
@@ -82,7 +85,11 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
         //  * Owned has unique access to its pointer
         //  * dst is unique
         //  * dst size is guaranteed by the SizedInitializer call
-        core::ptr::copy_nonoverlapping(self.0.as_ptr().cast::<u8>(), dst.as_ptr().cast::<u8>(), size);
+        core::ptr::copy_nonoverlapping(
+            self.0.as_ptr().cast::<u8>(),
+            dst.as_ptr().cast::<u8>(),
+            size,
+        );
         std::alloc::dealloc(self.0.as_ptr() as *mut u8, layout);
         core::mem::forget(self);
     }

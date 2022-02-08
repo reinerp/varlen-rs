@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-use crate::{VarLen, Initializer, Layout, ArrayInitializer};
+use crate::{ArrayInitializer, Initializer, Layout, VarLen};
+use core::mem::MaybeUninit;
 use core::pin::Pin;
 use core::ptr::NonNull;
-use core::mem::MaybeUninit;
 
 pub struct SingleByteArray {
     len: usize,
@@ -45,10 +45,7 @@ unsafe impl VarLen for SingleByteArray {
         let tail_offset = core::mem::size_of::<Self>();
         let array_len = self.len;
         let size = tail_offset + array_len * core::mem::size_of::<u8>();
-        SBALayout{
-            array_len,
-            size,
-        }
+        SBALayout { array_len, size }
     }
 
     const ALIGN: usize = core::mem::align_of::<Self>();
@@ -63,21 +60,22 @@ pub struct SingleByteArrayInit<TailInit> {
     pub tail: TailInit,
 }
 
-unsafe impl<TailInit: ArrayInitializer<u8>> Initializer<SingleByteArray> for SingleByteArrayInit<TailInit> {
+unsafe impl<TailInit: ArrayInitializer<u8>> Initializer<SingleByteArray>
+    for SingleByteArrayInit<TailInit>
+{
     fn calculate_layout_cautious(&self) -> Option<SBALayout> {
         let tail_offset = core::mem::size_of::<Self>();
         let array_len = self.len;
         let size = tail_offset.checked_add(self.len)?;
-        Some(SBALayout{
-            array_len,
-            size,
-        })
+        Some(SBALayout { array_len, size })
     }
 
     unsafe fn initialize(self, dst: NonNull<SingleByteArray>, layout: SBALayout) {
-        core::ptr::write(dst.as_ptr(), SingleByteArray{len: self.len});
-        let tail = core::slice::from_raw_parts_mut(dst.as_ptr().add(1) as *mut MaybeUninit<u8>, layout.array_len) 
-            as *mut [MaybeUninit<u8>] as *mut [u8];
+        core::ptr::write(dst.as_ptr(), SingleByteArray { len: self.len });
+        let tail = core::slice::from_raw_parts_mut(
+            dst.as_ptr().add(1) as *mut MaybeUninit<u8>,
+            layout.array_len,
+        ) as *mut [MaybeUninit<u8>] as *mut [u8];
         self.tail.initialize(NonNull::new_unchecked(tail))
     }
 }

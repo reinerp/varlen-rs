@@ -225,16 +225,8 @@ unsafe impl<Head, Tail1: VarLen, Tail2: VarLen> VarLen for GenericVarLen2<Head, 
     #[inline(always)]
     unsafe fn drop_tail(self: Pin<&mut Self>, layout: Self::Layout) {
         let p = self.get_unchecked_mut() as *mut _ as *mut u8;
-        crate::macro_support::drop_field::<Tail1>(
-            p,
-            layout.tail1_offset,
-            layout.tail1_layout,
-        );
-        crate::macro_support::drop_field::<Tail2>(
-            p,
-            layout.tail2_offset,
-            layout.tail2_layout,
-        );
+        crate::macro_support::drop_field::<Tail1>(p, layout.tail1_offset, layout.tail1_layout);
+        crate::macro_support::drop_field::<Tail2>(p, layout.tail2_offset, layout.tail2_layout);
     }
 }
 

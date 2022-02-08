@@ -2,19 +2,19 @@ use crate::Initializer;
 
 use super::{Layout, VarLen};
 
-use core::alloc as alloc;
-use core::ptr::NonNull;
-use core::pin::Pin;
+use core::alloc;
 use core::marker::PhantomData;
+use core::pin::Pin;
+use core::ptr::NonNull;
 
 /// A cross between a `T` and a `Box<T>`, for variable-length types.
-/// 
-/// The type `Owned<T>` is a pointer to a variable-length `T` that is responsible for calling 
+///
+/// The type `Owned<T>` is a pointer to a variable-length `T` that is responsible for calling
 /// destructors on `T` (and its tail), but is *not* responsible for freeing the underlying storage.
 pub struct Owned<'storage, T: VarLen>(NonNull<T>, PhantomData<&'storage [u8]>);
 
-impl<'storage, T: VarLen> Owned<'storage,T> {
-    /// Safety: tail must be valid. For example, this can have been produced by a `SizedInitializer` 
+impl<'storage, T: VarLen> Owned<'storage, T> {
+    /// Safety: tail must be valid. For example, this can have been produced by a `SizedInitializer`
     /// call or similar, on a correctly allocated buffer.
     pub unsafe fn from_raw(raw: NonNull<T>) -> Self {
         Owned(raw, PhantomData)
@@ -49,7 +49,9 @@ impl<'storage, T: VarLen> Owned<'storage,T> {
     #[inline]
     pub fn new_in(init: impl Initializer<T>, bump: &'storage bumpalo::Bump) -> Self {
         let layout = init.calculate_layout_cautious().unwrap();
-        let ptr = bump.alloc_layout(alloc::Layout::from_size_align(layout.size(), T::ALIGN).unwrap()).cast::<T>();
+        let ptr = bump
+            .alloc_layout(alloc::Layout::from_size_align(layout.size(), T::ALIGN).unwrap())
+            .cast::<T>();
         unsafe {
             init.initialize(ptr, layout);
         }

@@ -46,7 +46,6 @@
     //! random accessing is available valid length types for the array are [`ArrayLen`], its memory layout is
     //! calculated and stored in [`ArrayLayout`], and its general initializer is [`SizedInit`].
     )]
-    
 
 use crate::owned::Owned;
 use crate::{Initializer, Layout, VarLen};
@@ -126,14 +125,14 @@ impl Indexing for UncheckedIndexing {}
 /// which indicates the locations at which `T` objects start. Appending to the `Seq` updates the
 /// bitmask. In this mode, safe (checked) indexing is available, which will either return to a
 /// valid object or will fail at runtime (with either `None` or a panic).
-/// 
+///
 /// This mode has some performance overheads relative to `UncheckedIndexing` mode:
-/// 
+///
 /// * We consume additional memory: 1 bit overhead per `T::ALIGN` bytes of storage. The max
 ///   is when `T::ALIGN=1`, in which case there is 12.5% of memory overhead.
 /// * Modifying (appending or clearing) the sequence has some runtime overhead, as it must
 ///   update the bitmask in addition to the underlying byte storage.
-/// 
+///
 /// You should only enable this mode if you want to use safe indexing by integers.
 pub struct CheckedIndexing;
 
@@ -405,7 +404,7 @@ fn try_realloc<Idx: Indexing>(
     align: usize,
 ) -> Result<(NonNull<u8>, usize), OverflowError> {
     let size_offsets = std::cmp::max(
-        std::cmp::max(minimum_offsets, (32 + align - 1) /  align),
+        std::cmp::max(minimum_offsets, (32 + align - 1) / align),
         capacity_offsets.checked_mul(2).ok_or(OverflowError)?,
     );
     let size_bytes = size_offsets.checked_mul(align).ok_or(OverflowError)?;
@@ -557,7 +556,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     ///   immutable operations on the sequence, and also for `push()` on the sequence. The offset
     ///   is invalidated by any mutable operation that removes the specified element, or any earlier
     ///   element, from the sequence.
-    /// 
+    ///
     /// For a safe variant, see [`Self::from_offset`].
     #[inline]
     pub unsafe fn from_offset_unchecked(&self, offset: usize) -> &T {
@@ -579,7 +578,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     ///   immutable operations on the sequence, and also for `push()` on the sequence. The offset
     ///   is invalidated by any mutable operation that removes the specified element, or any earlier
     ///   element, from the sequence.
-    /// 
+    ///
     /// For a safe variant, see [`Self::from_offset_mut`].
     #[inline]
     pub unsafe fn from_offset_unchecked_mut(&mut self, offset: usize) -> Pin<&mut T> {
@@ -862,7 +861,7 @@ impl<'a, T: VarLen> Drop for OwnedElems<'a, T> {
 mod tests {
     #[test]
     fn push_box() {
-        use crate::{Seq, VBox, Str};
+        use crate::{Seq, Str, VBox};
         let s: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
         let mut seq = Seq::new_sequential();
         seq.push(s);

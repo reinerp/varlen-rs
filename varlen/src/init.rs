@@ -1,6 +1,6 @@
 use super::ArrayInitializer;
-use core::ptr::NonNull;
 use core::mem::MaybeUninit;
+use core::ptr::NonNull;
 
 /// Substitute for NonNull::as_uninit_slice_mut() until that stabilizes.
 unsafe fn as_uninit_slice_mut<'a, T>(p: NonNull<[T]>) -> &'a mut [MaybeUninit<T>] {
@@ -9,12 +9,12 @@ unsafe fn as_uninit_slice_mut<'a, T>(p: NonNull<[T]>) -> &'a mut [MaybeUninit<T>
 
 pub struct FromIterPrefix<Iter>(pub Iter);
 
-unsafe impl<T, Iter: Iterator<Item=T>> ArrayInitializer<T> for FromIterPrefix<Iter> {
+unsafe impl<T, Iter: Iterator<Item = T>> ArrayInitializer<T> for FromIterPrefix<Iter> {
     unsafe fn initialize(mut self, dst: NonNull<[T]>) {
-        let dst= as_uninit_slice_mut(dst);
+        let dst = as_uninit_slice_mut(dst);
         for slot in dst.iter_mut() {
             slot.write(self.0.next().unwrap());
-        }        
+        }
     }
 }
 
@@ -22,7 +22,7 @@ pub struct FillSequentially<Lambda>(pub Lambda);
 
 unsafe impl<T, Lambda: FnMut(usize) -> T> ArrayInitializer<T> for FillSequentially<Lambda> {
     unsafe fn initialize(mut self, dst: NonNull<[T]>) {
-        let dst= as_uninit_slice_mut(dst);
+        let dst = as_uninit_slice_mut(dst);
         for (i, slot) in dst.iter_mut().enumerate() {
             slot.write(self.0(i));
         }

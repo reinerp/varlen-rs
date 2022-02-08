@@ -1,33 +1,35 @@
 #![allow(unused_variables)]
 
-use proc_macro2::TokenStream;
-use syn::{DeriveInput, Ident, Data, Fields, Field, Attribute, Type, Visibility};
-use syn::punctuated::Punctuated;
-use syn::token::Comma;
-use syn::spanned::Spanned;
-use syn::parse_quote;
-use quote::{quote, quote_spanned, format_ident};
 use convert_case::{Case, Casing};
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote, quote_spanned};
+use syn::parse_quote;
+use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
+use syn::token::Comma;
+use syn::{Attribute, Data, DeriveInput, Field, Fields, Ident, Type, Visibility};
 
 #[proc_macro_attribute]
-pub fn define_varlen(attrs: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn define_varlen(
+    attrs: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
     let attrs: proc_macro2::TokenStream = attrs.into();
     let item: proc_macro2::TokenStream = item.into();
     match define_varlen_impl(attrs.clone(), item.clone()) {
-        Ok(x) => {
-            x
-        },
+        Ok(x) => x,
         Err(Error(msg, span)) => {
-            let error = quote_spanned!(span => 
+            let error = quote_spanned!(span =>
                 ::core::compile_error!(#msg);
             );
-            quote!( 
+            quote!(
                 #attrs
                 #item
                 #error
             )
-        },
-    }.into()
+        }
+    }
+    .into()
 }
 
 struct Error(&'static str, proc_macro2::Span);
@@ -35,19 +37,23 @@ struct Error(&'static str, proc_macro2::Span);
 fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStream, Error> {
     let d: DeriveInput = match syn::parse2(d) {
         Ok(d) => d,
-        Err(e) => return Err(Error("define_varlen could not parse this as a struct", e.span())),
+        Err(e) => {
+            return Err(Error(
+                "define_varlen could not parse this as a struct",
+                e.span(),
+            ))
+        }
     };
     let d_attrs = d.attrs;
-    let fields = 
-        if let Data::Struct(s) = d.data {
-            if let Fields::Named(n) = s.fields {
-                n.named
-            } else {
-                return Err(Error("define_varlen requires named fields", d.ident.span()))
-            }
+    let fields = if let Data::Struct(s) = d.data {
+        if let Fields::Named(n) = s.fields {
+            n.named
         } else {
-            return Err(Error("define_varlen requires a struct", d.ident.span()))
-        };
+            return Err(Error("define_varlen requires named fields", d.ident.span()));
+        }
+    } else {
+        return Err(Error("define_varlen requires a struct", d.ident.span()));
+    };
 
     let (tyvis, tyvis_inner) = SimpleVisibility::try_parse(&d.vis)?;
     let tyname = d.ident;
@@ -55,50 +61,55 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
     let mut mod_name = format_ident!("{}", tyname.to_string().to_case(Case::Snake));
     mod_name.set_span(proc_macro2::Span::call_site());
 
-
-    let FieldGroups{
-        lengths: LengthFields{
-            meta: Meta {
-                ident: lengths_ident,
-                ..
+    let FieldGroups {
+        lengths:
+            LengthFields {
+                meta:
+                    Meta {
+                        ident: lengths_ident,
+                        ..
+                    },
+                tys: lengths_ty,
             },
-            tys: lengths_ty,
-        },
-        len_exprs: LengthExprs{
+        len_exprs: LengthExprs {
             len_expr,
             len_ident,
         },
-        varlen_fields: FieldMarkers{
-            meta: Meta{
-                ident: varlen_ident,
-                ..
+        varlen_fields:
+            FieldMarkers {
+                meta:
+                    Meta {
+                        ident: varlen_ident,
+                        ..
+                    },
+                init_ty_params: varlen_init_ty_param,
+                init_ty_constraints: varlen_init_ty_constraint,
+                layout_idents: varlen_layout_ident,
+                layout_ty: varlen_layout_ty,
+                cat_field_fast: varlen_cat_field_fast,
+                cat_field_cautious: varlen_cat_field_cautious,
+                drop_field: varlen_drop_field,
+                align_of_field: varlen_align_of_field,
+                needs_drop_tail: varlen_needs_drop_tail,
             },
-            init_ty_params: varlen_init_ty_param,
-            init_ty_constraints: varlen_init_ty_constraint,
-            layout_idents: varlen_layout_ident,
-            layout_ty: varlen_layout_ty,
-            cat_field_fast: varlen_cat_field_fast,
-            cat_field_cautious: varlen_cat_field_cautious,
-            drop_field: varlen_drop_field,
-            align_of_field: varlen_align_of_field,
-            needs_drop_tail: varlen_needs_drop_tail,
-        },
-        all_fields: AllFields{
-            meta: Meta{
-                attrs: all_attr,
-                ident: all_ident,
-                vis: all_vis,
-                vis_inner: all_vis_inner,
+        all_fields:
+            AllFields {
+                meta:
+                    Meta {
+                        attrs: all_attr,
+                        ident: all_ident,
+                        vis: all_vis,
+                        vis_inner: all_vis_inner,
+                    },
+                decl_ty: all_decl_ty,
+                init_ty: all_init_ty,
+                init_field: all_init_field,
+                ref_ty: all_ref_ty,
+                mut_ty: all_mut_ty,
+                mut_layout_ty: all_mut_layout_ty,
+                ref_field: all_ref_field,
+                mut_field: all_mut_field,
             },
-            decl_ty: all_decl_ty,
-            init_ty: all_init_ty,
-            init_field: all_init_field,
-            ref_ty: all_ref_ty,
-            mut_ty: all_mut_ty,
-            mut_layout_ty: all_mut_layout_ty,
-            ref_field: all_ref_field,
-            mut_field: all_mut_field,
-        },
     } = parse_fields(fields, &mod_name)?;
 
     // TODO(reinerp): This is potentially quadratic syntax size. Create type synonym instead,
@@ -158,7 +169,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             #tyvis_inner struct Muts<'a> {
                 #(
                     #all_attr
-                    #all_vis_inner #all_ident: #all_mut_ty,  
+                    #all_vis_inner #all_ident: #all_mut_ty,
                 )*
             }
 
@@ -172,7 +183,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             #tyvis_inner struct MutsLayout<'a> {
                 #(
                     #all_attr
-                    #all_vis_inner #all_ident: #all_mut_layout_ty,  
+                    #all_vis_inner #all_ident: #all_mut_layout_ty,
                 )*
             }
         }
@@ -218,12 +229,12 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 ]
             );
 
-            const NEEDS_DROP_TAIL: bool = 
+            const NEEDS_DROP_TAIL: bool =
                 #(
                     #varlen_needs_drop_tail ||
                 )*
                 false;
-            
+
             unsafe fn drop_tail(self: ::core::pin::Pin<&mut Self>, layout: #mod_name::VarLenLayout) {
                 let p = self.get_unchecked_mut() as *mut Self as *mut u8;
                 #(
@@ -353,42 +364,40 @@ enum SimpleVisibility {
 impl quote::ToTokens for SimpleVisibility {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            SimpleVisibility::Private => {},
+            SimpleVisibility::Private => {}
             SimpleVisibility::Super => tokens.extend(quote!(pub(super))),
             SimpleVisibility::SuperSuper => tokens.extend(quote!(pub(in super::super))),
             SimpleVisibility::Crate => tokens.extend(quote!(pub(crate))),
             SimpleVisibility::Public => tokens.extend(quote!(pub)),
         }
-    }   
+    }
 }
 
 impl SimpleVisibility {
     fn bad_visibility(span: proc_macro2::Span) -> Error {
         Error(
             "Visibility must be one of: (none), pub, pub(crate), pub(self), pub(super)",
-            span
+            span,
         )
     }
 
     fn try_parse(v: &Visibility) -> Result<(SimpleVisibility, SimpleVisibility), Error> {
-        Ok(
-            match v {
-                Visibility::Public(_) => (SimpleVisibility::Public, SimpleVisibility::Public),
-                Visibility::Crate(_) => (SimpleVisibility::Crate, SimpleVisibility::Crate),
-                Visibility::Restricted(r) => {
-                    if r.path.is_ident("crate") {
-                        (SimpleVisibility::Crate, SimpleVisibility::Crate)
-                    } else if r.path.is_ident("super") {
-                        (SimpleVisibility::Super, SimpleVisibility::SuperSuper)
-                    } else if r.path.is_ident("self") {
-                        (SimpleVisibility::Private, SimpleVisibility::Super)
-                    } else {
-                        return Err(Self::bad_visibility(v.span()))
-                    }
-                },
-                Visibility::Inherited => (SimpleVisibility::Private, SimpleVisibility::Super),
+        Ok(match v {
+            Visibility::Public(_) => (SimpleVisibility::Public, SimpleVisibility::Public),
+            Visibility::Crate(_) => (SimpleVisibility::Crate, SimpleVisibility::Crate),
+            Visibility::Restricted(r) => {
+                if r.path.is_ident("crate") {
+                    (SimpleVisibility::Crate, SimpleVisibility::Crate)
+                } else if r.path.is_ident("super") {
+                    (SimpleVisibility::Super, SimpleVisibility::SuperSuper)
+                } else if r.path.is_ident("self") {
+                    (SimpleVisibility::Private, SimpleVisibility::Super)
+                } else {
+                    return Err(Self::bad_visibility(v.span()));
+                }
             }
-        )
+            Visibility::Inherited => (SimpleVisibility::Private, SimpleVisibility::Super),
+        })
     }
 }
 
@@ -399,7 +408,6 @@ fn mk_layout_ident(ident: &Ident) -> Ident {
 fn mk_init_ident(ident: &Ident) -> Ident {
     format_ident!("Init{}", ident.to_string().to_case(Case::UpperCamel))
 }
-
 
 #[derive(Clone)]
 struct OneMeta {
@@ -419,7 +427,7 @@ impl OneMeta {
         let attrs = &f.attrs;
         let attr = quote!(#( #attrs )*);
         let (vis, vis_inner) = SimpleVisibility::try_parse(&f.vis)?;
-        Ok(OneMeta{
+        Ok(OneMeta {
             attr,
             vis,
             vis_inner,
@@ -442,7 +450,7 @@ struct Meta {
 
 impl Meta {
     fn new() -> Self {
-        Meta{
+        Meta {
             attrs: Vec::new(),
             vis: Vec::new(),
             vis_inner: Vec::new(),
@@ -467,7 +475,7 @@ struct LengthFields {
 
 impl LengthFields {
     fn new() -> Self {
-        LengthFields{
+        LengthFields {
             meta: Meta::new(),
             tys: Vec::new(),
         }
@@ -479,7 +487,7 @@ struct FieldMarkers {
     /// Universal metadata
     meta: Meta,
     /// Type parameter for this field's initializer
-    init_ty_params: Vec<Ident>, 
+    init_ty_params: Vec<Ident>,
     /// Constraints on the initializer type.
     init_ty_constraints: Vec<TokenStream>,
     /// 'field_name_#layout'
@@ -500,7 +508,7 @@ struct FieldMarkers {
 
 impl FieldMarkers {
     fn new() -> Self {
-        FieldMarkers{
+        FieldMarkers {
             meta: Meta::new(),
             init_ty_params: Vec::new(),
             init_ty_constraints: Vec::new(),
@@ -555,7 +563,7 @@ impl AllFields {
 
 struct LengthExprs {
     len_ident: Vec<Ident>,
-    len_expr: Vec<TokenStream>,    
+    len_expr: Vec<TokenStream>,
 }
 
 impl LengthExprs {
@@ -593,12 +601,24 @@ impl FieldGroups {
         self.all_fields.meta.push(meta);
         self.all_fields.decl_ty.push(quote_spanned! { span => #ty });
         self.all_fields.init_ty.push(quote_spanned! { span => #ty });
-        self.all_fields.ref_ty.push(quote_spanned!{ span => &'a #ty });
-        self.all_fields.mut_ty.push(quote_spanned!{ span => &'a mut #ty });
-        self.all_fields.mut_layout_ty.push(quote_spanned!{ span => &'a mut #ty });
-        self.all_fields.init_field.push(quote_spanned!{ span => self.#ident });
-        self.all_fields.ref_field.push(quote_spanned!{ span => &self.#ident });
-        self.all_fields.mut_field.push(quote_spanned!{ span => &mut mut_ref.#ident });
+        self.all_fields
+            .ref_ty
+            .push(quote_spanned! { span => &'a #ty });
+        self.all_fields
+            .mut_ty
+            .push(quote_spanned! { span => &'a mut #ty });
+        self.all_fields
+            .mut_layout_ty
+            .push(quote_spanned! { span => &'a mut #ty });
+        self.all_fields
+            .init_field
+            .push(quote_spanned! { span => self.#ident });
+        self.all_fields
+            .ref_field
+            .push(quote_spanned! { span => &self.#ident });
+        self.all_fields
+            .mut_field
+            .push(quote_spanned! { span => &mut mut_ref.#ident });
         Ok(())
     }
 
@@ -614,12 +634,24 @@ impl FieldGroups {
         self.all_fields.meta.push(meta);
         self.all_fields.decl_ty.push(quote_spanned! { span => #ty });
         self.all_fields.init_ty.push(quote_spanned! { span => #ty });
-        self.all_fields.ref_ty.push(quote_spanned!{ span => &'a #ty });
-        self.all_fields.mut_ty.push(quote_spanned!{ span => &'a #ty });
-        self.all_fields.mut_layout_ty.push(quote_spanned!{ span => &'a mut #ty });
-        self.all_fields.init_field.push(quote_spanned!{ span => self.#ident });
-        self.all_fields.ref_field.push(quote_spanned!{ span => &self.#ident });
-        self.all_fields.mut_field.push(quote_spanned!{ span => &mut mut_ref.#ident });
+        self.all_fields
+            .ref_ty
+            .push(quote_spanned! { span => &'a #ty });
+        self.all_fields
+            .mut_ty
+            .push(quote_spanned! { span => &'a #ty });
+        self.all_fields
+            .mut_layout_ty
+            .push(quote_spanned! { span => &'a mut #ty });
+        self.all_fields
+            .init_field
+            .push(quote_spanned! { span => self.#ident });
+        self.all_fields
+            .ref_field
+            .push(quote_spanned! { span => &self.#ident });
+        self.all_fields
+            .mut_field
+            .push(quote_spanned! { span => &mut mut_ref.#ident });
         Ok(())
     }
 
@@ -631,41 +663,62 @@ impl FieldGroups {
         let span = f.ty.span();
         let ty = f.ty;
 
-
         self.varlen_fields.meta.push(meta.clone());
         self.varlen_fields.init_ty_params.push(init_ident.clone());
-        self.varlen_fields.init_ty_constraints.push(quote_spanned! { span => ::varlen::Initializer<#ty> });
+        self.varlen_fields
+            .init_ty_constraints
+            .push(quote_spanned! { span => ::varlen::Initializer<#ty> });
         self.varlen_fields.layout_idents.push(layout_ident.clone());
-        self.varlen_fields.layout_ty.push(quote_spanned! { span => <#ty as ::varlen::VarLen>::Layout });
-        self.varlen_fields.cat_field_cautious.push(quote_spanned! { span =>
-            ::varlen::macro_support::cat_field_cautious::<#ty, _>(&self.#ident, size)
-        });
-        self.varlen_fields.cat_field_fast.push(quote_spanned! { span =>
-            ::varlen::macro_support::cat_field_fast::<#ty, _>(&self, size)
-        });
+        self.varlen_fields
+            .layout_ty
+            .push(quote_spanned! { span => <#ty as ::varlen::VarLen>::Layout });
+        self.varlen_fields
+            .cat_field_cautious
+            .push(quote_spanned! { span =>
+                ::varlen::macro_support::cat_field_cautious::<#ty, _>(&self.#ident, size)
+            });
+        self.varlen_fields
+            .cat_field_fast
+            .push(quote_spanned! { span =>
+                ::varlen::macro_support::cat_field_fast::<#ty, _>(&self, size)
+            });
         self.varlen_fields.drop_field.push(quote_spanned! { span =>
             ::varlen::macro_support::drop_field::<#ty>(p, layout.#ident, layout.#layout_ident);
         });
-        self.varlen_fields.align_of_field.push(quote_spanned! { span =>
-            <#ty as ::varlen::VarLen>::ALIGN
-        });
-        self.varlen_fields.needs_drop_tail.push(quote_spanned! { span =>
-            (<#ty as ::varlen::VarLen>::NEEDS_DROP_TAIL || ::core::mem::needs_drop::<#ty>())
-        });
+        self.varlen_fields
+            .align_of_field
+            .push(quote_spanned! { span =>
+                <#ty as ::varlen::VarLen>::ALIGN
+            });
+        self.varlen_fields
+            .needs_drop_tail
+            .push(quote_spanned! { span =>
+                (<#ty as ::varlen::VarLen>::NEEDS_DROP_TAIL || ::core::mem::needs_drop::<#ty>())
+            });
 
         self.all_fields.meta.push(meta);
-        self.all_fields.decl_ty.push(quote_spanned! { span =>::varlen::marker::FieldMarker<#ty> });
-        self.all_fields.init_ty.push(quote_spanned! { span => #init_ident });
-        self.all_fields.ref_ty.push(quote_spanned!{ span => &'a #ty });
-        self.all_fields.mut_ty.push(quote_spanned!{ span => ::core::pin::Pin<&'a mut #ty> });
-        self.all_fields.mut_layout_ty.push(quote_spanned!{ span => ::core::pin::Pin<&'a mut #ty> });
+        self.all_fields
+            .decl_ty
+            .push(quote_spanned! { span =>::varlen::marker::FieldMarker<#ty> });
+        self.all_fields
+            .init_ty
+            .push(quote_spanned! { span => #init_ident });
+        self.all_fields
+            .ref_ty
+            .push(quote_spanned! { span => &'a #ty });
+        self.all_fields
+            .mut_ty
+            .push(quote_spanned! { span => ::core::pin::Pin<&'a mut #ty> });
+        self.all_fields
+            .mut_layout_ty
+            .push(quote_spanned! { span => ::core::pin::Pin<&'a mut #ty> });
         self.all_fields.init_field.push(quote_spanned! { span =>
             ::varlen::macro_support::init_field(self.#ident, p, layout.#ident, layout.#layout_ident)
         });
-        self.all_fields.ref_field.push(quote_spanned!{ span => 
+        self.all_fields.ref_field.push(quote_spanned! { span =>
             ::varlen::macro_support::ref_field(self, layout.#ident)
         });
-        self.all_fields.mut_field.push(quote_spanned!{ span => 
+        self.all_fields.mut_field.push(quote_spanned! { span =>
             ::varlen::macro_support::mut_field(mut_ptr, layout.#ident)
         });
         Ok(())
@@ -682,54 +735,80 @@ impl FieldGroups {
         let (elem_ty, len_expr) = match &ty {
             Type::Array(a) => {
                 let len = &a.len;
-                ((*a.elem).clone(), quote_spanned!{len.span()=> #len})
-            },
-            _ => 
+                ((*a.elem).clone(), quote_spanned! {len.span()=> #len})
+            }
+            _ => {
                 return Err(Error(
                     "Fields annotated with #[varlen_array] must be of array type",
-                    span)),
+                    span,
+                ))
+            }
         };
         let len_span = len_expr.span();
 
-        self.len_exprs.len_expr.push(quote_spanned!(len_span => #len_expr ));
+        self.len_exprs
+            .len_expr
+            .push(quote_spanned!(len_span => #len_expr ));
         self.len_exprs.len_ident.push(len_ident.clone());
 
         self.varlen_fields.meta.push(meta.clone());
         self.varlen_fields.init_ty_params.push(init_ident.clone());
-        self.varlen_fields.init_ty_constraints.push(quote_spanned! { span => ::varlen::ArrayInitializer<#elem_ty> });
+        self.varlen_fields
+            .init_ty_constraints
+            .push(quote_spanned! { span => ::varlen::ArrayInitializer<#elem_ty> });
         self.varlen_fields.layout_idents.push(len_ident.clone());
-        self.varlen_fields.layout_ty.push(quote_spanned! { span => usize });
-        self.varlen_fields.cat_field_cautious.push(quote_spanned! { span =>
-            ::varlen::macro_support::cat_array_field_cautious::<#elem_ty>(
-                #mod_name::lengths::#len_ident(lengths), size)
-        });
-        self.varlen_fields.cat_field_fast.push(quote_spanned! { span =>
-            ::varlen::macro_support::cat_array_field_fast::<#elem_ty>(
-                #mod_name::lengths::#len_ident(lengths), size)
-        });
+        self.varlen_fields
+            .layout_ty
+            .push(quote_spanned! { span => usize });
+        self.varlen_fields
+            .cat_field_cautious
+            .push(quote_spanned! { span =>
+                ::varlen::macro_support::cat_array_field_cautious::<#elem_ty>(
+                    #mod_name::lengths::#len_ident(lengths), size)
+            });
+        self.varlen_fields
+            .cat_field_fast
+            .push(quote_spanned! { span =>
+                ::varlen::macro_support::cat_array_field_fast::<#elem_ty>(
+                    #mod_name::lengths::#len_ident(lengths), size)
+            });
         self.varlen_fields.drop_field.push(quote_spanned! { span =>
-            ::varlen::macro_support::drop_array::<#elem_ty>(p, layout.#ident, layout.#len_ident);        
+            ::varlen::macro_support::drop_array::<#elem_ty>(p, layout.#ident, layout.#len_ident);
         });
-        self.varlen_fields.align_of_field.push(quote_spanned! { span =>
-            ::core::mem::align_of::<#elem_ty>()
-        });
-        self.varlen_fields.needs_drop_tail.push(quote_spanned! { span =>
-            ::core::mem::needs_drop::<#elem_ty>()
-        });
+        self.varlen_fields
+            .align_of_field
+            .push(quote_spanned! { span =>
+                ::core::mem::align_of::<#elem_ty>()
+            });
+        self.varlen_fields
+            .needs_drop_tail
+            .push(quote_spanned! { span =>
+                ::core::mem::needs_drop::<#elem_ty>()
+            });
 
         self.all_fields.meta.push(meta);
-        self.all_fields.init_ty.push(quote_spanned! { span => #init_ident });
-        self.all_fields.decl_ty.push(quote_spanned! { span => ::varlen::marker::ArrayMarker<#elem_ty> });
-        self.all_fields.ref_ty.push(quote_spanned!{ span => &'a [#elem_ty] });
-        self.all_fields.mut_ty.push(quote_spanned!{ span => &'a mut [#elem_ty] });
-        self.all_fields.mut_layout_ty.push(quote_spanned!{ span => &'a mut [#elem_ty] });
+        self.all_fields
+            .init_ty
+            .push(quote_spanned! { span => #init_ident });
+        self.all_fields
+            .decl_ty
+            .push(quote_spanned! { span => ::varlen::marker::ArrayMarker<#elem_ty> });
+        self.all_fields
+            .ref_ty
+            .push(quote_spanned! { span => &'a [#elem_ty] });
+        self.all_fields
+            .mut_ty
+            .push(quote_spanned! { span => &'a mut [#elem_ty] });
+        self.all_fields
+            .mut_layout_ty
+            .push(quote_spanned! { span => &'a mut [#elem_ty] });
         self.all_fields.init_field.push(quote_spanned! { span =>
             ::varlen::macro_support::init_array(self.#ident, p, layout.#ident, layout.#len_ident)
         });
-        self.all_fields.ref_field.push(quote_spanned!{ span => 
+        self.all_fields.ref_field.push(quote_spanned! { span =>
             ::varlen::macro_support::ref_array(self, layout.#ident, layout.#len_ident)
         });
-        self.all_fields.mut_field.push(quote_spanned!{ span => 
+        self.all_fields.mut_field.push(quote_spanned! { span =>
             ::varlen::macro_support::mut_array(mut_ptr, layout.#ident, layout.#len_ident)
         });
         Ok(())
@@ -745,9 +824,9 @@ enum FieldType {
 }
 
 fn parse_fields(fields: Punctuated<Field, Comma>, mod_name: &Ident) -> Result<FieldGroups, Error> {
-    let varlen_attr: Attribute = parse_quote!{ #[varlen] };
-    let varlen_array_attr: Attribute = parse_quote!{ #[varlen_array] };
-    let layout_attr: Attribute = parse_quote!{ #[controls_layout] };
+    let varlen_attr: Attribute = parse_quote! { #[varlen] };
+    let varlen_array_attr: Attribute = parse_quote! { #[varlen_array] };
+    let layout_attr: Attribute = parse_quote! { #[controls_layout] };
 
     let mut field_groups = FieldGroups::new();
 
