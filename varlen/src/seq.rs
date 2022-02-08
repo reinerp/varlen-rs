@@ -344,47 +344,6 @@ impl Indexing for CheckedIndexing {}
 /// 
 /// Maintaining this bitmap adds a memory overhead of 1 bit per `T::ALIGN` bytes (at most 12.5% 
 /// overhead in the case `T::ALIGN=1`), and slightly increases the cost of [`Seq::push`].
-/// 
-/// ## Indexing by element index
-/// 
-/// Using the type [`Seq<T, Index<N>>`] or [`Seq<T, IndexAndOffset<N>>`] it is possible to index
-/// by element index:
-/// 
-/// <TODO: example>
-/// 
-/// This is achieved by using an index table that stores the offset of every `N`th element,
-/// shown here with `N=2`:
-///
-/// ```svgbob
-/// "Seq (actual layout may vary)"
-/// +------+--------+--------------+--------------+
-/// | base | len: 3 | occupied_end | capacity_end |
-/// +------+--------+--------------+--------------+
-///    |                   |              |
-///    |                   |              '----------------------.
-///    '-.                 '-----------------.                   |
-///      |                                   |                   |
-///      v  "Storage"                        v                   v
-///      +---+-------+---+-------+---+-------+-------------------+
-///      | 5 | hello | 4 | good  | 6 | world | "<uninitialized>" |
-///      +---+-------+---+-------+---+-------+-------------------+
-///      ^                       ^       
-///      |                       |
-///      '-.      .--------------'
-///        |      |
-///      +-----+-----+-------------------+
-///      | 0   | 8   | "<uninitialized>" |
-///      +-----+-----+-------------------+
-///      "Index table"
-/// ```
-/// 
-/// To find the offset of element `i`, we look up the offset of `(i / N) * N` in this table 
-/// (the nearest element before `i`), and then scan sequentially forward from there until we reach
-/// element `i`. When using the type [`Seq<T, IndexAndOffset<N>>`], *both* the index table and the
-/// bitmap are present, and the "scan sequentially forward" operation proceeds by fast bit operations
-/// on the bitmap.
-/// 
-/// This costs `std::mem::size_of::<T>() / N` bytes of overhead per stored element.
 
 )]
 pub struct Seq<T: VarLen, Idx: Indexing = UncheckedIndexing> {
@@ -547,7 +506,6 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
         let elem_offset = self.occupied_offsets;
         unsafe {
             Idx::mark_offset_valid(self.ptr, self.capacity_offsets, elem_offset);
-            println!("Writing at {}", elem_offset);
             init.initialize(add_offsets_fast(self.ptr, elem_offset), layout);
         }
         self.occupied_offsets = occupied_plus;
@@ -769,7 +727,6 @@ impl<'a, T: VarLen> Iterator for Iter<'a, T> {
         if self.len_elements > 0 {
             let t = unsafe { self.ptr.as_ref() };
             let size = t.calculate_layout().size();
-            println!("Next returning ptr: {:?}", self.ptr);
             self.ptr = unsafe { add_bytes_fast(self.ptr, round_up_fast(size, T::ALIGN)) };
             self.len_elements -= 1;
             Some(t)
