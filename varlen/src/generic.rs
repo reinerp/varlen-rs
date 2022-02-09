@@ -1,3 +1,11 @@
+// TODO: Rephrase in terms of Pair<A: VarLen, B: VarLen> and `FixLen<T>: VarLen`.
+//
+// So:
+//   GenericVarLen1<Head, Tail> = Pair<FixLen<Head>, Tail>
+//   GenericVarLen2<Head, Tail1, Tail2> = Pair<FixLen<Head>, Pair<Tail1, Tail2>>;
+//
+// Or possibly: Tup2<T, U>, Tup3<T, U, V>, Tup4<T, U, V, W>
+
 use crate::{Initializer, VarLen};
 use core::pin::Pin;
 

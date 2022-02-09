@@ -1,10 +1,23 @@
+//! Equivalent of [`Box<T>`] for variable-length types.
+//! 
+//! # Examples
+//! 
+//! Heap-allocated `Str`:
+//! 
+//! ```
+//! use varlen::VBox;
+//! use varlen::str::Str;
+//! let s = VBox::new(Str::copy_from_str("hello"));
+//! assert_eq!("hello", &s[..]);
+//! ```
+
 use super::{Initializer, Layout, VarLen};
 
 use core::alloc;
 use core::pin::Pin;
 use core::ptr::NonNull;
 
-/// [`Box<T>`], but for [`VarLen`] types `T`.
+/// Equivalent of [`Box<T>`] for variable-length types.
 pub struct VBox<T: VarLen>(NonNull<T>);
 
 #[inline(never)]
