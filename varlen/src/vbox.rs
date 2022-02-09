@@ -1,3 +1,6 @@
+#![warn(missing_docs)]
+#![warn(rustdoc::missing_doc_code_examples)]
+
 //! Equivalent of [`Box<T>`] for variable-length types.
 //! 
 //! # Examples
@@ -18,6 +21,17 @@ use core::pin::Pin;
 use core::ptr::NonNull;
 
 /// Equivalent of [`Box<T>`] for variable-length types.
+/// 
+/// # Examples
+/// 
+/// Heap-allocated `Str`:
+/// 
+/// ```
+/// use varlen::VBox;
+/// use varlen::str::Str;
+/// let s = VBox::new(Str::copy_from_str("hello"));
+/// assert_eq!("hello", &s[..]);
+/// ```
 pub struct VBox<T: VarLen>(NonNull<T>);
 
 #[inline(never)]
@@ -26,7 +40,18 @@ fn allocation_overflow() -> ! {
     panic!("Allocation size overflow")
 }
 
+#[allow(rustdoc::missing_doc_code_examples)]
 impl<T: VarLen> VBox<T> {
+    /// Allocates memory which is right-sized for this particular instance.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use varlen::VBox;
+    /// use varlen::str::Str;
+    /// let s = VBox::new(Str::copy_from_str("hello"));
+    /// assert_eq!("hello", &s[..]);
+    /// ```
     pub fn new(init: impl Initializer<T>) -> Self {
         let layout = init
             .calculate_layout_cautious()
@@ -44,19 +69,80 @@ impl<T: VarLen> VBox<T> {
         }
     }
 
+    /// Mutable access to the field.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use varlen::VBox;
+    /// use varlen::str::Str;
+    /// let mut s = VBox::new(Str::copy_from_str("Hello"));
+    /// assert_eq!("Hello", &s[..]);
+    /// s.as_mut().mut_slice().make_ascii_uppercase();
+    /// assert_eq!("HELLO", &s[..]);
+    /// s.as_mut().mut_slice().make_ascii_lowercase();
+    /// assert_eq!("hello", &s[..]);
+    /// ```
     pub fn as_mut(&mut self) -> Pin<&mut T> {
         unsafe { Pin::new_unchecked(self.0.as_mut()) }
     }
 
-    // Safety: must not be used to produce a `&mut T`.
+    /// Converts this to a raw pointer representation.
+    /// 
+    /// # Safety
+    /// 
+    /// Because `T` is a variable-length type, there are additional safety obligations
+    /// above and beyond the usual treatment of `NonNull<T>`. In particular, the caller
+    /// responsible for ensuring that whenever a `&T` is produced, the header-specified
+    /// layout matches the layout of the tail. This prohibits code patterns such as 
+    /// overwriting the header in a way that changes the layout.
+    /// 
+    /// # Example
+    /// 
+    /// Safe roundtripping through a raw pointer:
+    /// 
+    /// ```
+    /// use varlen::vbox::VBox;
+    /// use varlen::str::Str;
+    /// 
+    /// let b = VBox::new(Str::copy_from_str("hello"));
+    /// let b = unsafe { 
+    ///     let p = b.into_raw();
+    ///     VBox::from_raw(p)
+    /// };
+    /// assert_eq!(&b[..], "hello");
+    /// ```
     pub unsafe fn into_raw(self) -> *mut T {
         let result = self.0.as_ptr();
         core::mem::forget(self);
         result
     }
 
-    // Safety: must have been a validly produced `*mut T`, either by a `VarLenInitializer` call
-    // or similar.
+    /// Constructs a [`VBox<T>`] from a [`NonNull<T>`] pointer.
+    /// 
+    /// # Safety
+    /// 
+    /// The layout of `T`'s _tail_, which is the variable-sized part not included in
+    /// [`std::mem::size_of::<T>()`], must be consistent with the layout specified by
+    /// `T`'s header. For example, this can have been produced by a 
+    /// [`crate::Initializer<T>`] call or similar, on a buffer sufficiently sized for
+    /// the initializer's layout.
+    /// 
+    /// # Example
+    /// 
+    /// Safe roundtripping through a raw pointer:
+    /// 
+    /// ```
+    /// use varlen::vbox::VBox;
+    /// use varlen::str::Str;
+    /// 
+    /// let b = VBox::new(Str::copy_from_str("hello"));
+    /// let b = unsafe { 
+    ///     let p = b.into_raw();
+    ///     VBox::from_raw(p)
+    /// };
+    /// assert_eq!("hello", &b[..]);
+    /// ```
     pub unsafe fn from_raw(raw: *mut T) -> Self {
         VBox(NonNull::new_unchecked(raw))
     }
@@ -89,8 +175,25 @@ impl<T: VarLen> core::ops::Deref for VBox<T> {
     }
 }
 
+/// [`VBox<T>`] is an initializer for `T`.
+/// 
+/// # Examples
+/// 
+/// Pushing a [`VBox<T>`] onto a [`crate::seq::Seq<T>`]:
+/// 
+/// ```
+/// use varlen::vbox::VBox;
+/// use varlen::seq::Seq;
+/// use varlen::str::Str;
+/// 
+/// let mut seq: Seq<Str> = Seq::new();
+/// let b = VBox::new(Str::copy_from_str("hello"));
+/// seq.push(b);
+/// ```
 unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
     unsafe fn initialize(self, dst: NonNull<T>, layout: T::Layout) {
+        let VBox(ptr) = self;
+        let ptr = ptr.as_ptr().cast::<u8>();
         let size = layout.size();
         // Safety: we already called from_size_align in the VBox constructor.
         let layout = alloc::Layout::from_size_align_unchecked(size, T::ALIGN);
@@ -99,11 +202,11 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
         //  * dst is unique
         //  * dst size is guaranteed by the SizedInitializer call
         core::ptr::copy_nonoverlapping(
-            self.0.as_ptr().cast::<u8>(),
+            ptr,
             dst.as_ptr().cast::<u8>(),
             size,
         );
-        std::alloc::dealloc(self.0.as_ptr() as *mut u8, layout);
+        std::alloc::dealloc(ptr, layout);
         core::mem::forget(self);
     }
 
