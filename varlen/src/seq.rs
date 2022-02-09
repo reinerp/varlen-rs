@@ -43,8 +43,7 @@
     //! [`OwnedElems<'a, T>`]. 
     //! 
     //! Types [`CheckedIndexing`] and [`UncheckedIndexing`] parametrize the [`Seq<T>`] and control whether
-    //! random accessing is available valid length types for the array are [`ArrayLen`], its memory layout is
-    //! calculated and stored in [`ArrayLayout`], and its general initializer is [`SizedInit`].
+    //! random accessing is available.
     )]
 
 use crate::owned::Owned;

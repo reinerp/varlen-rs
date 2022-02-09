@@ -1,26 +1,134 @@
+#![warn(missing_docs)]
+#![warn(rustdoc::missing_doc_code_examples)]
+//! A pointer to `T` that calls its destructor but not its deallocator when dropped.
+//! 
+//! # Examples
+//! 
+//! ```
+//! # #[cfg(feature = "bumpalo")] {
+//! use varlen::str::Str;
+//! use varlen::owned::Owned;
+//! type TypeWithDrop = varlen::generic::GenericVarLen1<Box<u32>, Str>;
+//! let arena = bumpalo::Bump::new();
+//! let owned: Owned<TypeWithDrop> = Owned::new_in(
+//!     varlen::generic::generic_var_len_1::Init{
+//!         head: Box::new(42),
+//!         tail: Str::copy_from_str("hello")
+//!     },
+//!     &arena);
+//! assert_eq!(42, *owned.head);
+//! drop(owned); // Calls drop() on the Box<u32>
+//! drop(arena); // Deallocates the arena storage.
+//! # }
+//! ```
 use crate::Initializer;
 
 use super::{Layout, VarLen};
 
-use core::alloc;
 use core::marker::PhantomData;
 use core::pin::Pin;
 use core::ptr::NonNull;
 
-/// A cross between a `T` and a `Box<T>`, for variable-length types.
-///
-/// The type `Owned<T>` is a pointer to a variable-length `T` that is responsible for calling
-/// destructors on `T` (and its tail), but is *not* responsible for freeing the underlying storage.
+/// A pointer to `T` that calls its destructor but not its deallocator when dropped.
+/// 
+/// # Examples
+/// 
+/// ```
+/// #[cfg(feature = "bumpalo")] {
+/// use varlen::str::Str;
+/// use varlen::owned::Owned;
+/// type TypeWithDrop = varlen::generic::GenericVarLen1<Box<u32>, Str>;
+/// let arena = bumpalo::Bump::new();
+/// let owned: Owned<TypeWithDrop> = Owned::new_in(
+///     varlen::generic::generic_var_len_1::Init{
+///         head: Box::new(42),
+///         tail: Str::copy_from_str("hello")
+///     },
+///     &arena);
+/// assert_eq!(42, *owned.head);
+/// drop(owned); // Calls drop() on the Box<u32>
+/// drop(arena); // Deallocates the arena storage.
+/// }
+/// ```
+/// 
+/// # Comparison to `T` on fixed length types
+/// 
+/// The type [`Owned<T>`] fills a role for variable-length types similar to what `T` fills
+/// for fixed-length types, typically in "into" or "take" APIs. For example, whereas 
+/// `Vec<T>::into_iter` iterates over `T` items (taking them and potentially dropping them 
+/// one-by-one), [`crate::seq::Seq<T>::take_elems`] iterates over `Owned<T>` items, taking them and
+/// potentially dropping them one-by-bone:
+/// 
+/// ```
+/// use varlen::VarLen;
+/// use varlen::seq::Seq;
+/// use varlen::str::Str;
+/// use varlen::owned::Owned;
+/// fn consume_seq<T: VarLen>(mut seq: Seq<T>) {
+///     for t in seq.take_elems() {
+///         let t: Owned<T> = t;
+///         // T's destructor runs here, freeing any memory it points to.
+///     }
+///     assert_eq!(0, seq.len());
+///     // Seq<T>'s destructor runs here, freeing its underlying storage.
+/// }
+/// ```
 pub struct Owned<'storage, T: VarLen>(NonNull<T>, PhantomData<&'storage [u8]>);
 
+#[allow(rustdoc::missing_doc_code_examples)]
 impl<'storage, T: VarLen> Owned<'storage, T> {
-    /// Safety: tail must be valid. For example, this can have been produced by a `SizedInitializer`
-    /// call or similar, on a correctly allocated buffer.
+    /// Constructs an `Owned<T>` pointer from a `NonNull<T>` pointer.
+    /// 
+    /// # Safety
+    /// 
+    /// The layout of `T`'s _tail_, which is the variable-sized part not included in
+    /// `std::mem::size_of::<T>()`, must be consistent with the layout specified by
+    /// `T`'s header. For example, this can have been produced by a 
+    /// [`crate::Initializer<T>`] call or similar, on a buffer sufficiently sized for
+    /// the initializer's layout.
+    /// 
+    /// # Example
+    /// 
+    /// Safe roundtripping through a raw pointer:
+    /// 
+    /// ```
+    /// use varlen::owned::Owned;
+    /// use varlen::VarLen;
+    /// fn roundtrip<T: VarLen>(x: Owned<T>) -> Owned<T> {
+    ///     unsafe { 
+    ///         let p = x.into_raw();
+    ///         Owned::from_raw(p)
+    ///     }
+    /// }
+    /// ```
     pub unsafe fn from_raw(raw: NonNull<T>) -> Self {
         Owned(raw, PhantomData)
     }
 
-    /// Safety: must not be used to produce a `&mut T`.
+    /// Converts this to a raw pointer representation.
+    /// 
+    /// # Safety
+    /// 
+    /// Because `T` is a variable-length type, there are additional safety obligations
+    /// above and beyond the usual treatment of `NonNull<T>`. In particular, the caller
+    /// responsible for ensuring that whenever a `&T` is produced, the header-specified
+    /// layout matches the layout of the tail. This prohibits code patterns such as 
+    /// overwriting the header in a way that changes the layout.
+    /// 
+    /// # Example
+    /// 
+    /// Safe roundtripping through a raw pointer:
+    /// 
+    /// ```
+    /// use varlen::owned::Owned;
+    /// use varlen::VarLen;
+    /// fn roundtrip<T: VarLen>(x: Owned<T>) -> Owned<T> {
+    ///     unsafe { 
+    ///         let p = x.into_raw();
+    ///         Owned::from_raw(p)
+    ///     }
+    /// }
+    /// ```
     pub unsafe fn into_raw(self) -> NonNull<T> {
         let result = self.0;
         core::mem::forget(self);
@@ -28,23 +136,61 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
     }
 
     /// Gets a (pinned) mutable reference.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # #[cfg(feature = "bumpalo")] {
+    /// use varlen::owned::Owned;
+    /// use varlen::str::Str;
+    /// use bumpalo::Bump;
+    /// 
+    /// let arena = Bump::new();
+    /// let s = Owned::new_in(Str::copy_from_str("Hello"), &arena);
+    /// s.as_mut().mut_slice().make_ascii_uppercase();
+    /// assert_eq!("HELLO", &s[..]);
+    /// s.as_mut().mut_slice().make_ascii_lowercase();
+    /// assert_eq!("hello", &s[..]);
+    /// # }
+    /// ```
     pub fn as_mut(&mut self) -> Pin<&mut T> {
         unsafe { Pin::new_unchecked(self.0.as_mut()) }
     }
 
-    /// Layout of the `T`.
-    pub fn get_alloc_layout(&self) -> alloc::Layout {
-        unsafe {
-            alloc::Layout::from_size_align_unchecked(T::calculate_layout(&*self).size(), T::ALIGN)
-        }
-    }
-
     /// Forgets the obligation to drop this.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # #[cfg(feature = "bumpalo")] {
+    /// use bumpalo::Bump;
+    /// use varlen::owned::Owned;
+    /// use varlen::str::Str;
+    /// let arena = Bump::new();
+    /// let s = Owned::new_in(Str::copy_from_str("hello"));
+    /// let s = s.leak();
+    /// assert_eq!("hello", &s[..]);
+    /// # }
+    /// ```
     pub fn leak(self) -> Pin<&'storage mut T> {
         let Owned(mut ptr, _) = self;
         unsafe { Pin::new_unchecked(ptr.as_mut()) }
     }
 
+    /// Allocates a `T` on the arena.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # #[cfg(feature = "bumpalo")] {
+    /// use bumpalo::Bump;
+    /// use varlen::owned::Owned;
+    /// use varlen::str::Str;
+    /// let arena = Bump::new();
+    /// let s = Owned::new_in(Str::copy_from_str("hello"));
+    /// assert_eq!("hello", &s[..]);
+    /// # }
+    /// ```
     #[cfg(feature = "bumpalo")]
     #[inline]
     pub fn new_in(init: impl Initializer<T>, bump: &'storage bumpalo::Bump) -> Self {
