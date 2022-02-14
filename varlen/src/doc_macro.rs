@@ -1,5 +1,4 @@
 #[cfg(feature = "doc")]
-#[macro_export]
 macro_rules! make_svgbobdoc {
     (
         $($t:tt)*
@@ -11,7 +10,6 @@ macro_rules! make_svgbobdoc {
 }
 
 #[cfg(not(feature = "doc"))]
-#[macro_export]
 macro_rules! make_svgbobdoc {
     (
         $( #![doc = $d:literal] )*
@@ -24,3 +22,5 @@ macro_rules! make_svgbobdoc {
         std::concat!( $( $d, '\n' ),* )
     );
 }
+
+pub(crate) use make_svgbobdoc;
