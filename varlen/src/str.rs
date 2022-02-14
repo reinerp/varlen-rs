@@ -33,10 +33,11 @@
 )]
 
 use crate::array::{Array, ArrayLen};
-use crate::{varlen_newtype, Initializer};
+use crate::newtype::define_varlen_newtype;
+use crate::Initializer;
 use core::pin::Pin;
 
-varlen_newtype! {
+define_varlen_newtype! {
     #[repr(transparent)]
     #[doc = crate::doc_macro::make_svgbobdoc!(
     /// A string with inline storage.
@@ -85,7 +86,7 @@ varlen_newtype! {
     )]
     pub struct Str<(Len: ArrayLen = usize)>(Array<u8, Len>);
 
-    with signature: impl<(Len: ArrayLen)> Str<(Len)>;
+    with signature: impl<(Len: ArrayLen)> Str<(Len)> { _ }
 
     with init: struct StrInit<_>(_);
     with inner_ref: fn inner(&self) -> &_;
