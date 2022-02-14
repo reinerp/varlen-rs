@@ -103,6 +103,7 @@ pub mod owned;
 pub mod seq;
 pub mod str;
 pub mod vbox;
+pub mod tuple;
 
 mod doc_macro;
 
@@ -180,6 +181,16 @@ pub struct FixedLenLayout<T>(PhantomData<T>);
 impl<T> Layout for FixedLenLayout<T> {
     fn size(&self) -> usize {
         core::mem::size_of::<T>()
+    }
+}
+
+unsafe impl<T> Initializer<FixedLen<T>> for T {
+    fn calculate_layout_cautious(&self) -> Option<FixedLenLayout<T>> {
+        Some(FixedLenLayout(PhantomData))
+    }
+
+    unsafe fn initialize(self, dst: NonNull<FixedLen<T>>, _layout: FixedLenLayout<T>) {
+        dst.as_ptr().write(FixedLen(self));
     }
 }
 

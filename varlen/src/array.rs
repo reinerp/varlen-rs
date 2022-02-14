@@ -25,7 +25,7 @@
 //! ```
 //! # use varlen::{VBox, Array};
 //! # use crate::varlen::{Layout, VarLen};
-//! let a = VBox::new(Array::copy_from_slice(&[1u8, 2, 3]));
+//! let a = VBox::<Array<u8>>::new(Array::copy_from_slice(&[1u8, 2, 3]));
 //! assert_eq!(&a[..], &[1, 2, 3]);
 //! // Layout is as specified above:
 //! assert_eq!(a.calculate_layout().size(), std::mem::size_of::<usize>() + 3)
@@ -173,7 +173,7 @@ impl<T> Array<T> {
     ///
     /// ```
     /// # use varlen::{VBox, Array};
-    /// let a = VBox::new(Array::copy_from_slice(&[1, 2, 3]));
+    /// let a = VBox::<Array<u8>>::new(Array::copy_from_slice(&[1, 2, 3]));
     /// assert_eq!(&a[..], &[1, 2, 3]);
     /// ```
     pub fn copy_from_slice(src: &[T]) -> SizedInit<crate::array_init::CopyFrom<T>>
@@ -208,7 +208,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     ///
     /// ```
     /// # use varlen::{VBox, Array};
-    /// let mut a = VBox::new(Array::copy_from_slice(&[1, 2, 3]));
+    /// let mut a = VBox::<Array<u16>>::new(Array::copy_from_slice(&[1, 2, 3]));
     /// a.as_mut().mut_slice()[2] = 5;
     /// assert_eq!(&a[..], &[1, 2, 5]);
     /// ```

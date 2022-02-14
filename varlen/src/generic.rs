@@ -122,7 +122,7 @@ unsafe impl<Head, Tail: VarLen, TailInit: Initializer<Tail>> Initializer<Generic
     for generic_var_len_1::Init<Head, TailInit>
 {
     fn calculate_layout_cautious(&self) -> Option<generic_var_len_1::Layout<Tail::Layout>> {
-        let offset = core::mem::size_of::<Self>();
+        let offset = core::mem::size_of::<Head>();
         let (tail_offset, tail_layout, size) =
             crate::macro_support::cat_field_cautious::<Tail, _>(&self.tail, offset)?;
         Some(generic_var_len_1::Layout {
@@ -302,7 +302,7 @@ unsafe impl<
     fn calculate_layout_cautious(
         &self,
     ) -> Option<generic_var_len_2::Layout<Tail1::Layout, Tail2::Layout>> {
-        let offset = core::mem::size_of::<Self>();
+        let offset = core::mem::size_of::<Head>();
         let (tail1_offset, tail1_layout, offset) =
             crate::macro_support::cat_field_cautious::<Tail1, _>(&self.tail1, offset)?;
         let (tail2_offset, tail2_layout, offset) =

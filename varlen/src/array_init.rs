@@ -88,6 +88,17 @@ pub fn new_array<const N: usize, T>(init: impl ArrayInitializer<T>) -> [T; N] {
 /// ```
 pub unsafe trait ArrayInitializer<T> {
     /// Fills the slice.
+    /// 
+    /// ```
+    /// use std::mem::MaybeUninit;
+    /// use varlen::array_init::{FillWithDefault, ArrayInitializer};
+    /// const UNINIT_U16: MaybeUninit<u16> = MaybeUninit::uninit();
+    /// let mut arr = [UNINIT_U16; 4];
+    /// FillWithDefault.initialize(&mut arr[..]);
+    /// for slot in arr {
+    ///     assert_eq!(0, unsafe { slot.assume_init() });
+    /// }
+    /// ```
     fn initialize(self, dst: &mut [MaybeUninit<T>]);
 }
 
