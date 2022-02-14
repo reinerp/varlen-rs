@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+#![warn(rustdoc::missing_doc_code_examples)]
 #![doc = crate::doc_macro::make_svgbobdoc!(
     //! A sequence of variable-length objects in a flat buffer.
     //! 
@@ -378,7 +380,7 @@ fn invalid_offset() -> ! {
     panic!("Invalid Seq offset")
 }
 
-pub struct OverflowError;
+struct OverflowError;
 
 #[inline(always)]
 unsafe fn add_offsets_fast<T: VarLen>(ptr: NonNull<T>, offsets: usize) -> NonNull<T> {

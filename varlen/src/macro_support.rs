@@ -1,3 +1,6 @@
+#![allow(missing_docs)]
+#![allow(rustdoc::missing_doc_code_examples)]
+//! Utilities for `varlen` internal macros. Do not use directly.
 use core::mem::MaybeUninit;
 use core::pin::Pin;
 use core::ptr::NonNull;
