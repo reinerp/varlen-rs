@@ -63,7 +63,7 @@
 //!
 //! ```
 //! use varlen::vbox::VBox;
-//! use varlen::init::{FillWithDefault, FillSequentially};
+//! use varlen::array_init::{FillWithDefault, FillSequentially};
 //! use varlen::seq::Seq;
 //! # use varlen::define_varlen;
 //! # #[define_varlen]
@@ -94,7 +94,7 @@
 
 pub mod array;
 pub mod generic;
-pub mod init;
+pub mod array_init;
 #[doc(hidden)]
 pub mod macro_support;
 pub mod marker;
@@ -158,13 +158,6 @@ pub unsafe trait VarLen {
 pub trait Layout {
     /// The size of the object in bytes.
     fn size(&self) -> usize;
-}
-
-/// Trait implementor promises:
-///  * casting dst to `&mut [T]` after calling initialize yields a valid reference.
-pub unsafe trait ArrayInitializer<T> {
-    /// Fills the slice.
-    unsafe fn initialize(self, dst: NonNull<[T]>);
 }
 
 /// Trait implementor promises:

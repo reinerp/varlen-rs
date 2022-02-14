@@ -92,7 +92,7 @@ macro_rules! initializer_newtype {
 mod tests {
     #![allow(dead_code)]
     use crate::array::{Array, SizedInit};
-    use crate::init::FillWithDefault;
+    use crate::array_init::FillWithDefault;
 
     varlen_newtype! {
         #[repr(transparent)]

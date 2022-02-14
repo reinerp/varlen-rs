@@ -37,7 +37,8 @@
 //! calculated and stored in [`ArrayLayout`], and its general initializer is [`SizedInit`].
 )]
 use crate::marker::ArrayMarker;
-use crate::{ArrayInitializer, Initializer, Layout, VarLen};
+use crate::{Initializer, Layout, VarLen};
+use crate::array_init::ArrayInitializer;
 use core::pin::Pin;
 
 #[doc = crate::make_svgbobdoc!(
@@ -175,7 +176,7 @@ impl<T> Array<T> {
     /// let a = VBox::new(Array::copy_from_slice(&[1, 2, 3]));
     /// assert_eq!(&a[..], &[1, 2, 3]);
     /// ```
-    pub fn copy_from_slice(src: &[T]) -> SizedInit<crate::init::CopyFrom<T>>
+    pub fn copy_from_slice(src: &[T]) -> SizedInit<crate::array_init::CopyFrom<T>>
     where
         T: Copy,
     {
@@ -191,7 +192,7 @@ impl<T> Array<T> {
     /// let a: VBox<Array<Box<u16>>> = VBox::new(Array::clone_from_slice(&[Box::new(1), Box::new(2)]));
     /// assert_eq!(&a[..], &[Box::new(1), Box::new(2)]);
     /// ```
-    pub fn clone_from_slice(src: &[T]) -> SizedInit<crate::init::CloneFrom<T>>
+    pub fn clone_from_slice(src: &[T]) -> SizedInit<crate::array_init::CloneFrom<T>>
     where
         T: Clone,
     {
@@ -239,12 +240,12 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     /// # See also
     ///
     /// When `Len=usize`, you may prefer [`Array::copy_from_slice`] which is guaranteed not to fail.
-    pub fn try_copy_from_slice(src: &[T]) -> Option<SizedInit<crate::init::CopyFrom<T>, Len>>
+    pub fn try_copy_from_slice(src: &[T]) -> Option<SizedInit<crate::array_init::CopyFrom<T>, Len>>
     where
         T: Copy,
     {
         let len = Len::from_usize(src.len())?;
-        Some(SizedInit(len, crate::init::CopyFrom(src)))
+        Some(SizedInit(len, crate::array_init::CopyFrom(src)))
     }
 
     /// Initializes an [`Array<T>`] by cloning from an existing slice. Returns [`None`] if the slice's length is longer
@@ -264,12 +265,12 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     /// # See also
     ///
     /// When `Len=usize`, you may prefer [`Array::copy_from_slice`] which is guaranteed not to fail.
-    pub fn try_clone_from_slice(src: &[T]) -> Option<SizedInit<crate::init::CloneFrom<T>, Len>>
+    pub fn try_clone_from_slice(src: &[T]) -> Option<SizedInit<crate::array_init::CloneFrom<T>, Len>>
     where
         T: Clone,
     {
         let len = Len::from_usize(src.len())?;
-        Some(SizedInit(len, crate::init::CloneFrom(src)))
+        Some(SizedInit(len, crate::array_init::CloneFrom(src)))
     }
 }
 
@@ -280,14 +281,14 @@ impl<T, Len: ArrayLen> Array<T, Len> {
 /// ```
 /// # use varlen::{Array, VBox};
 /// use varlen::array::SizedInit;
-/// use varlen::init::FillSequentially;
+/// use varlen::array_init::FillSequentially;
 /// let a: VBox<Array<u8>> = VBox::new(SizedInit(4usize, FillSequentially(|i| (i as u8) * 2)));
 /// assert_eq!(&a[..], [0, 2, 4, 6]);
 /// ```
 ///
 /// # See also
 ///
-/// Module [`crate::init`] has initializers that can be passed to `SizedInit`.
+/// Module [`crate::array_init`] has initializers that can be passed to `SizedInit`.
 pub struct SizedInit<Init, Len: ArrayLen = usize>(pub Len, pub Init);
 
 unsafe impl<T, Len: ArrayLen, Init: ArrayInitializer<T>> Initializer<Array<T, Len>>

@@ -1,5 +1,6 @@
 #![allow(dead_code)]
-use crate::{ArrayInitializer, Initializer, Layout, VarLen};
+use crate::{Initializer, Layout, VarLen};
+use crate::array_init::ArrayInitializer;
 use core::mem::MaybeUninit;
 use core::pin::Pin;
 use core::ptr::NonNull;

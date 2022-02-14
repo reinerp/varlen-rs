@@ -2,6 +2,7 @@ use core::pin::Pin;
 use core::ptr::NonNull;
 
 use crate::{Initializer, Layout, VarLen};
+use crate::array_init::ArrayInitializer;
 
 // Array fields
 
@@ -67,7 +68,7 @@ pub unsafe fn mut_array<'a, S, T>(base: *mut S, offset: usize, len: usize) -> &'
 }
 
 pub unsafe fn init_array<T>(
-    init: impl crate::ArrayInitializer<T>,
+    init: impl ArrayInitializer<T>,
     base: NonNull<u8>,
     offset: usize,
     len: usize,

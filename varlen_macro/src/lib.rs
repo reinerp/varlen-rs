@@ -755,7 +755,7 @@ impl FieldGroups {
         self.varlen_fields.init_ty_params.push(init_ident.clone());
         self.varlen_fields
             .init_ty_constraints
-            .push(quote_spanned! { span => ::varlen::ArrayInitializer<#elem_ty> });
+            .push(quote_spanned! { span => ::varlen::array_init::ArrayInitializer<#elem_ty> });
         self.varlen_fields.layout_idents.push(len_ident.clone());
         self.varlen_fields
             .layout_ty

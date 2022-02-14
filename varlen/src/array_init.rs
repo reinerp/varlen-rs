@@ -1,6 +1,12 @@
-use super::ArrayInitializer;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
+
+/// Trait implementor promises:
+///  * casting dst to `&mut [T]` after calling initialize yields a valid reference.
+pub unsafe trait ArrayInitializer<T> {
+    /// Fills the slice.
+    unsafe fn initialize(self, dst: NonNull<[T]>);
+}
 
 /// Substitute for NonNull::as_uninit_slice_mut() until that stabilizes.
 unsafe fn as_uninit_slice_mut<'a, T>(p: NonNull<[T]>) -> &'a mut [MaybeUninit<T>] {
