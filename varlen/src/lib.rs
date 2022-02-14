@@ -93,7 +93,6 @@
 //! ```
 
 pub mod array;
-pub mod generic;
 pub mod array_init;
 #[doc(hidden)]
 pub mod macro_support;
@@ -106,9 +105,6 @@ pub mod vbox;
 pub mod tuple;
 
 mod doc_macro;
-
-#[cfg(test)]
-mod test_type;
 
 pub use crate::str::Str;
 pub use array::Array;
