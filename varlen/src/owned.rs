@@ -194,6 +194,7 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
     #[cfg(feature = "bumpalo")]
     #[inline]
     pub fn new_in(init: impl Initializer<T>, bump: &'storage bumpalo::Bump) -> Self {
+        use core::alloc;
         let layout = init.calculate_layout_cautious().unwrap();
         let ptr = bump
             .alloc_layout(alloc::Layout::from_size_align(layout.size(), T::ALIGN).unwrap())
