@@ -2,11 +2,11 @@
 #![warn(rustdoc::missing_doc_code_examples)]
 
 //! Equivalent of [`Box<T>`] for variable-length types.
-//! 
+//!
 //! # Examples
-//! 
+//!
 //! Heap-allocated `Str`:
-//! 
+//!
 //! ```
 //! use varlen::VBox;
 //! use varlen::str::Str;
@@ -21,11 +21,11 @@ use core::pin::Pin;
 use core::ptr::NonNull;
 
 /// Equivalent of [`Box<T>`] for variable-length types.
-/// 
+///
 /// # Examples
-/// 
+///
 /// Heap-allocated `Str`:
-/// 
+///
 /// ```
 /// use varlen::VBox;
 /// use varlen::str::Str;
@@ -43,9 +43,9 @@ fn allocation_overflow() -> ! {
 #[allow(rustdoc::missing_doc_code_examples)]
 impl<T: VarLen> VBox<T> {
     /// Allocates memory which is right-sized for this particular instance.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::VBox;
     /// use varlen::str::Str;
@@ -70,9 +70,9 @@ impl<T: VarLen> VBox<T> {
     }
 
     /// Mutable access to the field.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::VBox;
     /// use varlen::str::Str;
@@ -88,25 +88,25 @@ impl<T: VarLen> VBox<T> {
     }
 
     /// Converts this to a raw pointer representation.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// Because `T` is a variable-length type, there are additional safety obligations
     /// above and beyond the usual treatment of `NonNull<T>`. In particular, the caller
     /// responsible for ensuring that whenever a `&T` is produced, the header-specified
-    /// layout matches the layout of the tail. This prohibits code patterns such as 
+    /// layout matches the layout of the tail. This prohibits code patterns such as
     /// overwriting the header in a way that changes the layout.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// Safe roundtripping through a raw pointer:
-    /// 
+    ///
     /// ```
     /// use varlen::vbox::VBox;
     /// use varlen::str::Str;
-    /// 
+    ///
     /// let b = VBox::new(Str::copy_from_str("hello"));
-    /// let b = unsafe { 
+    /// let b = unsafe {
     ///     let p = b.into_raw();
     ///     VBox::from_raw(p)
     /// };
@@ -119,25 +119,25 @@ impl<T: VarLen> VBox<T> {
     }
 
     /// Constructs a [`VBox<T>`] from a [`NonNull<T>`] pointer.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// The layout of `T`'s _tail_, which is the variable-sized part not included in
     /// [`std::mem::size_of::<T>()`], must be consistent with the layout specified by
-    /// `T`'s header. For example, this can have been produced by a 
+    /// `T`'s header. For example, this can have been produced by a
     /// [`crate::Initializer<T>`] call or similar, on a buffer sufficiently sized for
     /// the initializer's layout.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// Safe roundtripping through a raw pointer:
-    /// 
+    ///
     /// ```
     /// use varlen::vbox::VBox;
     /// use varlen::str::Str;
-    /// 
+    ///
     /// let b = VBox::new(Str::copy_from_str("hello"));
-    /// let b = unsafe { 
+    /// let b = unsafe {
     ///     let p = b.into_raw();
     ///     VBox::from_raw(p)
     /// };
@@ -176,16 +176,16 @@ impl<T: VarLen> core::ops::Deref for VBox<T> {
 }
 
 /// [`VBox<T>`] is an initializer for `T`.
-/// 
+///
 /// # Examples
-/// 
+///
 /// Pushing a [`VBox<T>`] onto a [`crate::seq::Seq<T>`]:
-/// 
+///
 /// ```
 /// use varlen::vbox::VBox;
 /// use varlen::seq::Seq;
 /// use varlen::str::Str;
-/// 
+///
 /// let mut seq: Seq<Str> = Seq::new();
 /// let b = VBox::new(Str::copy_from_str("hello"));
 /// seq.push(b);
@@ -201,11 +201,7 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
         //  * Owned has unique access to its pointer
         //  * dst is unique
         //  * dst size is guaranteed by the SizedInitializer call
-        core::ptr::copy_nonoverlapping(
-            ptr,
-            dst.as_ptr().cast::<u8>(),
-            size,
-        );
+        core::ptr::copy_nonoverlapping(ptr, dst.as_ptr().cast::<u8>(), size);
         std::alloc::dealloc(ptr, layout);
         core::mem::forget(self);
     }

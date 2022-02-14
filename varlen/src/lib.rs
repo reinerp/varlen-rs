@@ -101,15 +101,15 @@ pub mod newtype;
 pub mod owned;
 pub mod seq;
 pub mod str;
-pub mod vbox;
 pub mod tuple;
+pub mod vbox;
 
 mod doc_macro;
 
 pub use crate::str::Str;
 pub use array::Array;
-use core::ptr::NonNull;
 use core::marker::PhantomData;
+use core::ptr::NonNull;
 pub use owned::Owned;
 pub use seq::Seq;
 pub use varlen_macro::define_varlen;

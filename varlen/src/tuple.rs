@@ -68,19 +68,19 @@
 //!    type that has no alignment requirements, such as `Str<u8>`. Another option
 //!    is to sort fields from most-aligned to least-aligned.
 )]
-use crate::{Initializer, VarLen};
 use crate::marker::FieldMarker;
-use core::pin::Pin;
+use crate::{Initializer, VarLen};
 use core::concat;
+use core::pin::Pin;
 
 macro_rules! define_tuple {
     (
         $(#[$attr:meta])*
-        $name:ident< $($arg:ident),* >, 
-        $mod:ident, 
-        <$($fieldname:ident),*>, 
-        <$($offset:ident),*>, 
-        <$($layout:ident),*>, 
+        $name:ident< $($arg:ident),* >,
+        $mod:ident,
+        <$($fieldname:ident),*>,
+        <$($offset:ident),*>,
+        <$($layout:ident),*>,
         <$($init:ident),*>
     ) => {
         #[doc = concat!("Helper types for [`", stringify!($name), "`].")]
@@ -103,9 +103,9 @@ macro_rules! define_tuple {
             /// Layout of a tuple.
             $(#[$attr])*
             pub struct Layout<$($arg: VarLen),*>{
-                pub(super) size: usize, 
+                pub(super) size: usize,
                 $(
-                    pub(super) $offset: usize, 
+                    pub(super) $offset: usize,
                     pub(super) $layout: $arg::Layout
                 ),*
             }
@@ -143,7 +143,7 @@ macro_rules! define_tuple {
                             crate::macro_support::mut_field(mut_ptr, layout.$offset)
                         ),*
                     )
-                }        
+                }
             }
         }
 
@@ -162,7 +162,7 @@ macro_rules! define_tuple {
                     let ($offset, $layout, offset) = crate::macro_support::cat_field_fast::<$arg, _>(self, offset);
                 )*
                 let size = offset;
-                $mod::Layout{size, 
+                $mod::Layout{size,
                     $( $offset, $layout ),*
                 }
             }

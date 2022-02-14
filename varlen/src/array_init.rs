@@ -1,32 +1,31 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_doc_code_examples)]
 
-
 //! An [`ArrayInitializer<T>`] is an object that knows how to initialize the memory for a `[T]`.
 //! It is useful for initializing `[T; N]` or (of more relevance for this crate) initializing
 //! a `varlen::array::Array<T>`.
-//! 
+//!
 //! # Examples
-//! 
+//!
 //! Initializing a `[T; N]` from an initializer:
-//! 
+//!
 //! ```
 //! use varlen::array_init;
-//! 
+//!
 //! let arr: [u16; 4] = array_init::new_array(array_init::FillWithDefault);
 //! assert_eq!([0, 0, 0, 0], arr);
-//! 
+//!
 //! let arr2: [u16; 4] = array_init::new_array(array_init::FillSequentially(|i| (i * 2) as u16));
 //! assert_eq!([0, 2, 4, 6], arr2);
 //! ```
-//! 
+//!
 //! Initializing a `varlen::array::Array<T>` from an initializer:
-//! 
+//!
 //! ```
 //! use varlen::array_init;
 //! use varlen::array::{Array, SizedInit};
 //! use varlen::vbox::VBox;
-//! 
+//!
 //! let arr: VBox<Array<u16>> = VBox::new(SizedInit(4, array_init::FillSequentially(|i| (i * 2) as u16)));
 //! assert_eq!(&[0, 2, 4, 6], &arr[..]);
 //! ```
@@ -42,17 +41,17 @@ impl<T> HasUninit for T {
 }
 
 /// Initializes an array from an initializer.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::array_init;
-/// 
+///
 /// let arr: [u16; 4] = array_init::new_array(array_init::FillSequentially(|i| (i * 2) as u16));
 /// assert_eq!([0, 2, 4, 6], arr);
 /// ```
 pub fn new_array<const N: usize, T>(init: impl ArrayInitializer<T>) -> [T; N] {
-    let mut data= [HasUninit::UNINIT; N];
+    let mut data = [HasUninit::UNINIT; N];
     init.initialize(&mut data);
     unsafe {
         // Safety:
@@ -64,15 +63,15 @@ pub fn new_array<const N: usize, T>(init: impl ArrayInitializer<T>) -> [T; N] {
 }
 
 /// An object that is able to initialize an array of `T` values.
-/// 
+///
 /// # Examples
-/// 
+///
 /// An initializer that fills an array from end to start:
-/// 
+///
 /// ```
 /// use varlen::array_init::ArrayInitializer;
 /// use std::mem::MaybeUninit;
-/// 
+///
 /// struct WriteBackwardsPowersOf3;
 /// unsafe impl ArrayInitializer<u64> for WriteBackwardsPowersOf3 {
 ///     fn initialize(self, dst: &mut [MaybeUninit<u64>]) {
@@ -83,12 +82,12 @@ pub fn new_array<const N: usize, T>(init: impl ArrayInitializer<T>) -> [T; N] {
 ///         }
 ///     }
 /// }
-/// 
+///
 /// assert_eq!([81, 27, 9, 3, 1], varlen::array_init::new_array(WriteBackwardsPowersOf3));
 /// ```
 pub unsafe trait ArrayInitializer<T> {
     /// Fills the slice.
-    /// 
+    ///
     /// ```
     /// use std::mem::MaybeUninit;
     /// use varlen::array_init::{FillWithDefault, ArrayInitializer};
@@ -103,20 +102,20 @@ pub unsafe trait ArrayInitializer<T> {
 }
 
 /// Fills an array from a prefix of an iterator.
-/// 
+///
 /// # Example
-/// 
+///
 /// ```
 /// use varlen::array_init::{FromIterPrefix, new_array};
 /// let iter = std::iter::successors(Some(3), |i| Some(i * 3));
 /// let arr: [u16; 5] = new_array(FromIterPrefix(iter));
 /// assert_eq!(arr, [3, 9, 27, 81, 243]);
 /// ```
-/// 
+///
 /// # Panics
-/// 
+///
 /// Panics if the iterator yields fewer elements than the desired output size.
-/// 
+///
 /// ```should_panic
 /// use varlen::array_init::{FromIterPrefix, new_array};
 /// let iter = std::iter::successors(Some(3), |i| Some(i * 3));
@@ -127,25 +126,29 @@ pub struct FromIterPrefix<Iter>(pub Iter);
 unsafe impl<T, Iter: Iterator<Item = T>> ArrayInitializer<T> for FromIterPrefix<Iter> {
     fn initialize(mut self, dst: &mut [MaybeUninit<T>]) {
         for slot in dst.iter_mut() {
-            slot.write(self.0.next().unwrap_or_else(|| panic!("Iterator had too few elements")));
+            slot.write(
+                self.0
+                    .next()
+                    .unwrap_or_else(|| panic!("Iterator had too few elements")),
+            );
         }
     }
 }
 
 /// Fills an array by calling the function for every element, in ascending order by index.
-/// 
+///
 /// The function is given the `usize` element index as a parameter.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::array_init::{new_array, FillSequentially};
 /// let arr: [u16; 5] = new_array(FillSequentially(|i| (i as u16) * 2));
 /// assert_eq!(arr, [0, 2, 4, 6, 8]);
 /// ```
-/// 
+///
 /// Stateful functions are also allowed:
-/// 
+///
 /// ```
 /// use varlen::array_init::{new_array, FillSequentially};
 /// let mut state = 1;
@@ -166,9 +169,9 @@ unsafe impl<T, Lambda: FnMut(usize) -> T> ArrayInitializer<T> for FillSequential
 }
 
 /// Fills an array with [`Default::default()`].
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::array_init::{new_array, FillWithDefault};
 /// let arr: [u16; 5] = new_array(FillWithDefault);
@@ -183,24 +186,24 @@ unsafe impl<T: Default> ArrayInitializer<T> for FillWithDefault {
 }
 
 /// Fills an array by copying from a source array. Source and destination must have identical length.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::array_init::{new_array, CopyFrom};
 /// let arr: [u16; 5] = new_array(CopyFrom(&[3, 1, 4, 1, 5]));
 /// assert_eq!(arr, [3, 1, 4, 1, 5]);
 /// ```
-/// 
+///
 /// # Panics
-/// 
+///
 /// Panics if the source and destination arrays have different length.
-/// 
+///
 /// ```should_panic
 /// use varlen::array_init::{new_array, CopyFrom};
 /// let arr: [u16; 6] = new_array(CopyFrom(&[3, 1, 4, 1, 5]));  // Panic
 /// ```
-/// 
+///
 /// ```should_panic
 /// use varlen::array_init::{new_array, CopyFrom};
 /// let arr: [u16; 4] = new_array(CopyFrom(&[3, 1, 4, 1, 5]));  // Panic
@@ -217,24 +220,24 @@ unsafe impl<'a, T: Copy> ArrayInitializer<T> for CopyFrom<'a, T> {
 }
 
 /// Fills an array by cloning from a source array. Source and destination must have identical length.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::array_init::{new_array, CloneFrom};
-/// 
+///
 /// let src = ["hello".to_string(), "world".to_string()];
 /// let arr: [String; 2] = new_array(CloneFrom(&src));
 /// assert_eq!(src, arr);
 /// ```
-/// 
+///
 /// # Panics
-/// 
+///
 /// Panics if the source and destination have different lengths.
-/// 
+///
 /// ```should_panic
 /// # use varlen::array_init::{new_array, CloneFrom};
-/// # 
+/// #
 /// # let src = ["hello".to_string(), "world".to_string()];
 /// let arr: [String; 1] = new_array(CloneFrom(&src));  // Panics
 /// ```
@@ -250,24 +253,24 @@ unsafe impl<'a, T: Clone> ArrayInitializer<T> for CloneFrom<'a, T> {
 }
 
 /// Fills an array by moving from a source array. Source and destination must have identical length.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::array_init::{new_array, MoveFrom};
-/// 
+///
 /// let src = ["hello".to_string(), "world".to_string()];
 /// let arr: [String; 2] = new_array(MoveFrom(src));
 /// assert_eq!(arr, ["hello".to_string(), "world".to_string()]);
 /// ```
-/// 
+///
 /// # Panics
-/// 
+///
 /// Panics if the source and destination have different lengths.
-/// 
+///
 /// ```should_panic
 /// # use varlen::array_init::{new_array, MoveFrom};
-/// # 
+/// #
 /// # let src = ["hello".to_string(), "world".to_string()];
 /// let arr: [String; 1] = new_array(MoveFrom(src));  // Panics
 /// ```

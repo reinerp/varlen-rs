@@ -36,9 +36,9 @@
 //! The main type is [`Array<T>`], valid length types for the array are [`ArrayLen`], its memory layout is
 //! calculated and stored in [`ArrayLayout`], and its general initializer is [`SizedInit`].
 )]
+use crate::array_init::ArrayInitializer;
 use crate::marker::ArrayMarker;
 use crate::{Initializer, Layout, VarLen};
-use crate::array_init::ArrayInitializer;
 use core::pin::Pin;
 
 #[doc = crate::doc_macro::make_svgbobdoc!(
@@ -265,7 +265,9 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     /// # See also
     ///
     /// When `Len=usize`, you may prefer [`Array::copy_from_slice`] which is guaranteed not to fail.
-    pub fn try_clone_from_slice(src: &[T]) -> Option<SizedInit<crate::array_init::CloneFrom<T>, Len>>
+    pub fn try_clone_from_slice(
+        src: &[T],
+    ) -> Option<SizedInit<crate::array_init::CloneFrom<T>, Len>>
     where
         T: Clone,
     {
