@@ -153,7 +153,7 @@ pub unsafe trait VarLen {
 }
 
 /// A layout of a variable-length object.
-pub trait Layout {
+pub trait Layout: Eq {
     /// The size of the object in bytes.
     fn size(&self) -> usize;
 }
@@ -173,6 +173,13 @@ pub unsafe trait Initializer<T: VarLen> {
 pub struct FixedLen<T>(pub T);
 
 pub struct FixedLenLayout<T>(PhantomData<T>);
+
+impl<T> PartialEq for FixedLenLayout<T> {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+impl<T> Eq for FixedLenLayout<T> {}
 
 impl<T> Layout for FixedLenLayout<T> {
     fn size(&self) -> usize {

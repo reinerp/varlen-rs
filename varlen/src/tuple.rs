@@ -110,6 +110,19 @@ macro_rules! define_tuple {
                 ),*
             }
 
+            impl<$($arg: VarLen),*> PartialEq for Layout<$($arg),*> {
+                #[inline]
+                fn eq(&self, other: &Self) -> bool {
+                    self.size == other.size
+                    $(
+                        && self.$offset == other.$offset
+                        && self.$layout == other.$layout
+                    )*
+                }
+            }
+
+            impl<$($arg: VarLen),*> Eq for Layout<$($arg),*> {}
+
             impl<$($arg: VarLen),*> crate::Layout for Layout<$($arg),*> {
                 fn size(&self) -> usize {
                     self.size

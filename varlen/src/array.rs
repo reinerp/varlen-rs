@@ -113,6 +113,7 @@ pub struct Array<T, Len: ArrayLen = usize> {
 /// assert_eq!(1 + 3, arr.calculate_layout().size());
 /// ```
 
+#[derive(PartialEq, Eq)]
 pub struct ArrayLayout {
     array_offset: usize,
     array_len: usize,
