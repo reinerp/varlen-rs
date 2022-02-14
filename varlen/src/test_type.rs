@@ -76,7 +76,7 @@ unsafe impl<TailInit: ArrayInitializer<u8>> Initializer<SingleByteArray>
         let tail = core::slice::from_raw_parts_mut(
             dst.as_ptr().add(1) as *mut MaybeUninit<u8>,
             layout.array_len,
-        ) as *mut [MaybeUninit<u8>] as *mut [u8];
-        self.tail.initialize(NonNull::new_unchecked(tail))
+        );
+        self.tail.initialize(tail)
     }
 }

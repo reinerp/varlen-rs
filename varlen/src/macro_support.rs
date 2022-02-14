@@ -1,8 +1,9 @@
+use core::mem::MaybeUninit;
 use core::pin::Pin;
 use core::ptr::NonNull;
 
-use crate::{Initializer, Layout, VarLen};
 use crate::array_init::ArrayInitializer;
+use crate::{Initializer, Layout, VarLen};
 
 // Array fields
 
@@ -73,11 +74,11 @@ pub unsafe fn init_array<T>(
     offset: usize,
     len: usize,
 ) -> crate::marker::ArrayMarker<T> {
-    let slice_ptr = NonNull::new_unchecked(core::ptr::slice_from_raw_parts_mut(
-        base.as_ptr().wrapping_add(offset) as *mut T,
+    let arr: &mut [MaybeUninit<T>] = core::slice::from_raw_parts_mut(
+        base.as_ptr().wrapping_add(offset) as *mut MaybeUninit<T>,
         len,
-    ));
-    init.initialize(slice_ptr);
+    );
+    init.initialize(arr);
     crate::marker::ArrayMarker::new_unchecked()
 }
 
