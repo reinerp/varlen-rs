@@ -112,6 +112,7 @@ mod test_type;
 pub use crate::str::Str;
 pub use array::Array;
 use core::ptr::NonNull;
+use core::marker::PhantomData;
 pub use owned::Owned;
 pub use seq::Seq;
 pub use varlen_macro::define_varlen;
@@ -169,4 +170,29 @@ pub unsafe trait Initializer<T: VarLen> {
     //  * must be called with layout from `calculate_layout`
     //  * `dst` must be writable, with size as specified by `self.calculate_layout().size()`
     unsafe fn initialize(self, dst: NonNull<T>, layout: T::Layout);
+}
+
+/// Presents a fixed-length type `T` as a variable-length type.
+pub struct FixedLen<T>(pub T);
+
+pub struct FixedLenLayout<T>(PhantomData<T>);
+
+impl<T> Layout for FixedLenLayout<T> {
+    fn size(&self) -> usize {
+        core::mem::size_of::<T>()
+    }
+}
+
+unsafe impl<T> VarLen for FixedLen<T> {
+    type Layout = FixedLenLayout<T>;
+
+    fn calculate_layout(&self) -> Self::Layout {
+        FixedLenLayout(PhantomData)
+    }
+
+    const ALIGN: usize = core::mem::align_of::<T>();
+
+    const NEEDS_DROP_TAIL: bool = false;
+
+    unsafe fn drop_tail(self: core::pin::Pin<&mut Self>, _layout: Self::Layout) {}
 }
