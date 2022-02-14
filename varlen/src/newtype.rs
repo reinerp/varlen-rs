@@ -250,7 +250,7 @@ macro_rules! define_varlen_newtype {
 #[doc(inline)]
 pub use define_varlen_newtype;
 
-/// Implements [`crate::Initializer<T>`] for a type that is a newtype of a [`crate::Initializer<T>`].
+/// Lifts a [`crate::Initializer<T>`] implementation to a newtype.
 ///
 /// # Examples
 ///
