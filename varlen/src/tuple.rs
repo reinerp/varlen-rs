@@ -16,7 +16,7 @@
 //! use varlen::str::Str;
 //! type Person = Tup3<FixedLen<u8> /* age */, Str /* name */, Str /* postal address */>;
 //! let person: VBox<Person> = VBox::new(tup3::Init(
-//!     16,
+//!     FixedLen(16),
 //!     Str::copy_from_str("Harry Potter"),
 //!     Str::copy_from_str("Cupboard under the stairs"),
 //! ));

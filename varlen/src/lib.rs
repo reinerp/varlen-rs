@@ -184,13 +184,13 @@ impl<T> Layout for FixedLenLayout<T> {
     }
 }
 
-unsafe impl<T> Initializer<FixedLen<T>> for T {
+unsafe impl<T> Initializer<FixedLen<T>> for FixedLen<T> {
     fn calculate_layout_cautious(&self) -> Option<FixedLenLayout<T>> {
         Some(FixedLenLayout(PhantomData))
     }
 
     unsafe fn initialize(self, dst: NonNull<FixedLen<T>>, _layout: FixedLenLayout<T>) {
-        dst.as_ptr().write(FixedLen(self));
+        dst.as_ptr().write(self);
     }
 }
 
