@@ -61,6 +61,7 @@ impl<T> FieldMarker<T> {
 /// ```
 /// use varlen::define_varlen;
 /// use varlen::str::Str;
+/// use varlen::marker::ArrayMarker;
 /// 
 /// #[define_varlen]
 /// struct S {
@@ -72,7 +73,7 @@ impl<T> FieldMarker<T> {
 /// }
 /// 
 /// fn field_array(s: &S) -> &ArrayMarker<u16> {
-///     &s.x
+///     &s.array
 /// }
 /// ```
 /// 
