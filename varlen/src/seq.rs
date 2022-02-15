@@ -55,9 +55,9 @@ use core::pin::Pin;
 use core::ptr::NonNull;
 
 /// Creates a sequence with the specified elements.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::seq::{Seq, seq};
 /// use varlen::str::Str;
@@ -82,11 +82,11 @@ macro_rules! seq {
 pub use seq;
 
 /// Controls what kind of indexing is available on a sequence: either `CheckedIndexing` or `UncheckedIndexing`.
-/// 
+///
 /// # Examples
-/// 
+///
 /// Generic operation on a [`Seq<T, I>`] independent of indexing style:
-/// 
+///
 /// ```
 /// use varlen::seq::{seq, Seq, Indexing, CheckedIndexing};
 /// use varlen::str::Str;
@@ -97,7 +97,7 @@ pub use seq;
 ///     }
 ///     result
 /// }
-/// 
+///
 /// let seq1: Seq<Str> = seq![Str::copy_from_str("hello"), Str::copy_from_str("world")];
 /// assert_eq!(sum_lengths(&seq1), 10);
 /// let seq2: Seq<Str, CheckedIndexing> = seq![Str::copy_from_str("au"), Str::copy_from_str("revoir")];
@@ -130,18 +130,18 @@ mod private {
     }
 }
 
-/// Unchecked indexing strategy for sequences. 
-/// 
+/// Unchecked indexing strategy for sequences.
+///
 /// In this mode, the [`Seq<T>`] includes only the storage
 /// for the `T` objects, and nothing else. It is not possible to check integer offsets for
 /// validity in this mode, so only unsafe unchecked indexing is available.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::seq::Seq;
 /// use varlen::str::Str;
-/// 
+///
 /// let mut seq = Seq::new_minimal();
 /// seq.push(Str::copy_from_str("hello"));
 /// let pos = seq.offset();
@@ -189,18 +189,18 @@ impl private::Sealed for UncheckedIndexing {
 impl Indexing for UncheckedIndexing {}
 
 /// Checked indexing strategy for sequences.
-/// 
+///
 /// A [`Seq<T, CheckedIndexing>`] includes a bitmask
 /// which indicates the locations at which `T` objects start. Appending to the sequence updates the
 /// bitmask. In this mode, safe (checked) indexing is available, which will either return to a
 /// valid object or will fail at runtime (with either `None` or a panic).
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::seq::Seq;
 /// use varlen::str::Str;
-/// 
+///
 /// let mut seq = Seq::new_indexable();
 /// seq.push(Str::copy_from_str("hello"));
 /// let pos = seq.offset();
@@ -208,7 +208,7 @@ impl Indexing for UncheckedIndexing {}
 /// assert_eq!("hello", &seq.from_offset(0)[..]);
 /// assert_eq!("world", &seq.from_offset(pos)[..]);
 /// ```
-/// 
+///
 /// # Overheads
 ///
 /// This mode has some performance overheads relative to `UncheckedIndexing` mode:
@@ -445,13 +445,13 @@ pub struct Seq<T: VarLen, Idx: Indexing = UncheckedIndexing> {
 }
 
 /// A sequence with safe indexing by integers.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::seq::IndexableSeq;
 /// use varlen::str::Str;
-/// 
+///
 /// let mut seq = IndexableSeq::new();
 /// seq.push(Str::copy_from_str("hello"));
 /// let pos = seq.offset();
@@ -535,13 +535,13 @@ fn must_realloc<Idx: Indexing>(
 #[allow(rustdoc::missing_doc_code_examples)]
 impl<T: VarLen> Seq<T> {
     /// Constructs a sequence without checked indexing.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
-    /// 
+    ///
     /// let mut seq = Seq::new_minimal();
     /// seq.push(Str::copy_from_str("hello"));
     /// seq.push(Str::copy_from_str("world"));
@@ -557,13 +557,13 @@ impl<T: VarLen> Seq<T> {
 #[allow(rustdoc::missing_doc_code_examples)]
 impl<T: VarLen> Seq<T, CheckedIndexing> {
     /// Constructs a seq with checked indexing.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
-    /// 
+    ///
     /// let mut seq = Seq::new_indexable();
     /// seq.push(Str::copy_from_str("hello"));
     /// let pos = seq.offset();
@@ -580,9 +580,9 @@ impl<T: VarLen> Seq<T, CheckedIndexing> {
 #[allow(rustdoc::missing_doc_code_examples)]
 impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// Creates an empty sequence.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
@@ -604,9 +604,9 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     }
 
     /// Number of elements in the sequence.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
@@ -623,9 +623,9 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     }
 
     /// Number of offsets (units of [`T::ALIGN`](VarLen::ALIGN)) in the storage.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
@@ -642,13 +642,13 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     }
 
     /// Offset of the next element to be added to the sequence.
-    /// 
+    ///
     /// The offset is counted in units of [`T::ALIGN`](VarLen::ALIGN).
-    /// 
+    ///
     /// Also see [`crate::seq::Seq::from_offset`].
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
@@ -665,9 +665,9 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     }
 
     /// Adds an element to the sequence.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::{Seq, Str};
     /// let mut seq: Seq<Str> = Seq::new();
@@ -712,9 +712,9 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     }
 
     /// Iterate over references.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::{seq, Seq};
     /// use varlen::str::Str;
@@ -732,9 +732,9 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     }
 
     /// Iterate over mutable (pinned) references.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::{seq, Seq};
     /// use varlen::str::Str;
@@ -756,30 +756,30 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
 
     /// Gets the offset of this element from the start of the contiguous storage, counted in
     /// multiples of `<T as VarLen>::ALIGN`.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::{Seq, seq};
     /// use varlen::str::Str;
     /// let s: Seq<Str<u16>> = seq![
-    ///     Str::try_copy_from_str("hello").unwrap(), 
+    ///     Str::try_copy_from_str("hello").unwrap(),
     ///     Str::try_copy_from_str("world").unwrap(),
     /// ];
     /// let element = s.iter().nth(1).unwrap();
     /// assert_eq!(4, s.offset_of(element));
     /// ```
-    /// 
+    ///
     /// # Panics
     ///
     /// Panics if this element isn't from this sequence's storage.
-    /// 
+    ///
     /// ```should_panic
     /// use varlen::seq::{Seq, seq};
     /// use varlen::str::Str;
     /// use varlen::vbox::VBox;
     /// let s: Seq<Str> = seq![
-    ///     Str::copy_from_str("hello"), 
+    ///     Str::copy_from_str("hello"),
     ///     Str::copy_from_str("world"),
     /// ];
     /// let b = VBox::new(Str::copy_from_str("hello"));
@@ -799,13 +799,13 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
 
     /// Given an offset of an element from the start of the continuous storage (counted in multiples
     /// of `<T as VarLen>::ALIGN`), returns a reference to the element.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
-    /// 
+    ///
     /// let mut seq = Seq::new_minimal();
     /// seq.push(Str::copy_from_str("hello"));
     /// let pos = seq.offset();
@@ -817,11 +817,11 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// ```
     ///
     /// # Safety
-    /// 
-    /// The offset must be a valid offset to an element in this sequence. The 
-    /// canonical way to find this is by [`Self::offset()`] or by [`Self::offset_of()`] 
-    /// on an element from this sequence. Such offsets remain valid for all 
-    /// immutable operations on the sequence, and also for [`Self::push()`] on the 
+    ///
+    /// The offset must be a valid offset to an element in this sequence. The
+    /// canonical way to find this is by [`Self::offset()`] or by [`Self::offset_of()`]
+    /// on an element from this sequence. Such offsets remain valid for all
+    /// immutable operations on the sequence, and also for [`Self::push()`] on the
     /// sequence. The offset is invalidated by any mutable operation that removes
     /// the specified element, or any earlier element, from the sequence.
     ///
@@ -841,11 +841,11 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// of `<T as VarLen>::ALIGN`), returns a reference to the element.
     ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
-    /// 
+    ///
     /// let mut seq = Seq::new_minimal();
     /// seq.push(Str::copy_from_str("hello"));
     /// let pos = seq.offset();
@@ -859,11 +859,11 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// ```
     ///
     /// # Safety
-    /// 
-    /// The offset must be a valid offset to an element in this sequence. The 
-    /// canonical way to find this is by [`Self::offset()`] or by [`Self::offset_of()`] 
-    /// on an element from this sequence. Such offsets remain valid for all 
-    /// immutable operations on the sequence, and also for [`Self::push()`] on the 
+    ///
+    /// The offset must be a valid offset to an element in this sequence. The
+    /// canonical way to find this is by [`Self::offset()`] or by [`Self::offset_of()`]
+    /// on an element from this sequence. Such offsets remain valid for all
+    /// immutable operations on the sequence, and also for [`Self::push()`] on the
     /// sequence. The offset is invalidated by any mutable operation that removes
     /// the specified element, or any earlier element, from the sequence.
     ///
@@ -882,14 +882,14 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     }
 
     /// Iterate over [`Owned<T>`] values.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::{Seq, seq};
     /// use varlen::FixedLen;
     /// use std::sync::atomic::{AtomicUsize, Ordering};
-    /// 
+    ///
     /// struct CountsDropCalls(usize);
     /// static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
     /// impl Drop for CountsDropCalls {
@@ -897,25 +897,25 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     ///         DROP_COUNT.fetch_add(1, Ordering::SeqCst);
     ///     }
     /// }
-    /// 
+    ///
     /// let mut seq: Seq<FixedLen<CountsDropCalls>> = seq![
     ///     FixedLen(CountsDropCalls(123)),
     ///     FixedLen(CountsDropCalls(456)),
     /// ];
     /// assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 0);
     /// let mut iter = seq.take_elems();
-    /// 
+    ///
     /// // Take and drop first element:
     /// assert_eq!(iter.next().unwrap().0.0, 123);
     /// assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 1);
-    /// 
+    ///
     /// // Take and drop second element:
     /// assert_eq!(iter.next().unwrap().0.0, 456);
     /// assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 2);
-    /// 
+    ///
     /// assert!(iter.next().is_none());
     /// ```
-    /// 
+    ///
     /// # Ownership
     ///
     /// Ownership semantics is a little unusual:
@@ -951,13 +951,13 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
 #[allow(rustdoc::missing_doc_code_examples)]
 impl<T: VarLen> Seq<T, CheckedIndexing> {
     /// Gets a reference to the element at the specified offset (measured in units of [`T::ALIGN`](VarLen::ALIGN)).
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
-    /// 
+    ///
     /// let mut seq = Seq::new_indexable();
     /// seq.push(Str::copy_from_str("hello"));
     /// let pos = seq.offset();
@@ -965,9 +965,9 @@ impl<T: VarLen> Seq<T, CheckedIndexing> {
     /// assert_eq!("hello", &seq.from_offset(0)[..]);
     /// assert_eq!("world", &seq.from_offset(pos)[..]);
     /// ```
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if the offset doesn't point to the beginning of an element of this sequence.
     #[inline]
     pub fn from_offset(&self, offset: usize) -> &T {
@@ -980,13 +980,13 @@ impl<T: VarLen> Seq<T, CheckedIndexing> {
     }
 
     /// Gets a mutable reference to the element at the specified offset (measured in units of [`T::ALIGN`](VarLen::ALIGN)).
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
-    /// 
+    ///
     /// let mut seq = Seq::new_indexable();
     /// seq.push(Str::copy_from_str("hello"));
     /// let pos = seq.offset();
@@ -995,9 +995,9 @@ impl<T: VarLen> Seq<T, CheckedIndexing> {
     /// w.as_mut().mut_slice().make_ascii_uppercase();
     /// assert_eq!("WORLD", &w[..]);
     /// ```
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if the offset doesn't point to the beginning of an element of this sequence.
     #[inline]
     pub fn from_offset_mut(&mut self, offset: usize) -> Pin<&mut T> {
@@ -1010,12 +1010,12 @@ impl<T: VarLen> Seq<T, CheckedIndexing> {
     }
 
     /// Checks whether the specified offset is valid for this sequence.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use varlen::seq::Seq;
     /// use varlen::str::Str;
-    /// 
+    ///
     /// let mut seq = Seq::new_indexable();
     /// seq.push(Str::copy_from_str("hello"));
     /// let pos = seq.offset();
@@ -1051,9 +1051,9 @@ impl<T: VarLen, Idx: Indexing> Drop for Seq<T, Idx> {
 }
 
 /// Extends a [`Seq<T>`] from a slice.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::seq::Seq;
 /// use varlen::str::Str;
@@ -1081,9 +1081,9 @@ impl<T: VarLen, Init: Initializer<T>, Idx: Indexing> Extend<Init> for Seq<T, Idx
 }
 
 /// Collects a [`Seq<T>`] from an iterator.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::seq::Seq;
 /// use varlen::str::Str;
@@ -1108,9 +1108,9 @@ impl<T: VarLen, Init: Initializer<T>, Idx: Indexing> FromIterator<Init> for Seq<
 }
 
 /// Iterates over references.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::{Seq, Str};
 /// let mut seq: Seq<Str> = Seq::new();
@@ -1131,9 +1131,9 @@ impl<'a, T: VarLen> Iter<'a, T> {
     /// Returns a copy of this iterator that is limited to at most `n` elements.
     ///
     /// This is a slightly more efficient variant of `take`.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::{Seq, Str};
     /// let mut seq: Seq<Str> = Seq::new();
@@ -1188,9 +1188,9 @@ impl<'a, T: VarLen> ExactSizeIterator for Iter<'a, T> {
 }
 
 /// Iterate over mutable (pinned) references.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::seq::{seq, Seq};
 /// use varlen::str::Str;
@@ -1214,14 +1214,14 @@ impl<'a, T: VarLen> IterMut<'a, T> {
     /// Returns this iterator, modified to return at most `n` elements.
     ///
     /// This is a slightly more efficient variant of `take`.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::{Seq, Str, seq};
     /// let mut seq: Seq<Str> = seq![
-    ///     Str::copy_from_str("hello"), 
-    ///     Str::copy_from_str("good"), 
+    ///     Str::copy_from_str("hello"),
+    ///     Str::copy_from_str("good"),
     ///     Str::copy_from_str("world!"),
     /// ];
     /// for str in seq.iter_mut().limited_to(2) {
@@ -1275,16 +1275,16 @@ impl<'a, T: VarLen> ExactSizeIterator for IterMut<'a, T> {
 }
 
 /// Iterate over [`Owned<T>`] values.
-/// 
+///
 /// See [`Seq<T>::take_elems()`].
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::seq::{Seq, seq};
 /// use varlen::FixedLen;
 /// use std::sync::atomic::{AtomicUsize, Ordering};
-/// 
+///
 /// struct CountsDropCalls(usize);
 /// static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
 /// impl Drop for CountsDropCalls {
@@ -1292,25 +1292,25 @@ impl<'a, T: VarLen> ExactSizeIterator for IterMut<'a, T> {
 ///         DROP_COUNT.fetch_add(1, Ordering::SeqCst);
 ///     }
 /// }
-/// 
+///
 /// let mut seq: Seq<FixedLen<CountsDropCalls>> = seq![
 ///     FixedLen(CountsDropCalls(123)),
 ///     FixedLen(CountsDropCalls(456)),
 /// ];
 /// assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 0);
 /// let mut iter = seq.take_elems();
-/// 
+///
 /// // Take and drop first element:
 /// assert_eq!(iter.next().unwrap().0.0, 123);
 /// assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 1);
-/// 
+///
 /// // Take and drop second element:
 /// assert_eq!(iter.next().unwrap().0.0, 456);
 /// assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 2);
-/// 
+///
 /// assert!(iter.next().is_none());
 /// ```
-/// 
+///
 /// # Ownership
 ///
 /// Ownership semantics is a little unusual:
