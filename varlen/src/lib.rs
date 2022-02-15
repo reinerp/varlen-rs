@@ -1,3 +1,90 @@
+#![doc = crate::doc_macro::make_svgbobdoc!(
+//! # Summary
+//! 
+//! `varlen` defines foundational types and traits for working with variable-length types in Rust.
+//! 
+//! The main example of variable-length type is a struct that stores a dynamically-sized array
+//! directly in its storage, without requiring a pointer to a separate memory allocation. `varlen`
+//! helps you define such types, and lets you build arbitrary concatenations and structs of them.
+//! Additionally, it provides equivalents of the standard library's `Box<T>` and `Vec<T>` types
+//! that are adapted to work well with variable-length types.
+//! 
+//! If you want to reduce the number of pointer indirections in your types by storing 
+//! variable-sized arrays directly in your objects, then `varlen` is the library for you.
+//! 
+//! # Motivation
+//! 
+//! Traditionally when we use variable-sized data such as strings or arrays, we use a pointer
+//! to a separately allocated object. For example, the following object ...
+//! 
+//! ```
+//! type Person = (/* age */ usize, /* name */ Box<str>, /* email */ Box<str>);
+//! let person = (16, Box::from("Harry Potter"), Box::from("harry.potter@example.com"));
+//! ```
+//! 
+//! ... is represented in memory like this, with three separately allocated objects:
+//! 
+//! ```svgbob
+//! "Person"
+//! +------------+--------------------+-------------------+--------------------+-------------------+
+//! | "16 (age)" | "0x1234 (str ptr)" | "12 (str length)" | "0x5678 (str ptr)" | "24 (str length)" |
+//! +------------+--------------------+-------------------+--------------------+-------------------+
+//!                 |                                     |
+//!                 |                                     |
+//!     .-----------'                         .-----------'
+//!     |                                     |
+//!     v "str payload"                       v "str payload"
+//!     +------------------+                  +------------------------------+
+//!     | "'Harry Potter'" |                  | "'harry.potter@example.com'" |
+//!     +------------------+                  +------------------------------+
+//! ```
+//! 
+//! Sometimes we can reduce the number of object allocations by bringing the variable-length
+//! storage directly into the parent object, perhaps with a memory layout like this:
+//! 
+//! ```svgbob
+//! +-----+
+//! | ptr |
+//! +-----+
+//!   | 
+//!   |
+//!   |  "Person"
+//!   |  +-------------+-------------------+------------------+-------------------+------------------------------+
+//!   '->| "16 (age)"  | "12 (str length)" | "'Harry Potter'" | "24 (str length)" | "'harry.potter@example.com'" |
+//!      +-------------+-------------------+------------------+-------------------+------------------------------+
+//! ```
+//! 
+//! This layout reduced the number of object allocations from 3 to 2, potentially improving
+//! memory allocator performance, and potentially also improving [CPU cache locality](https://en.wikipedia.org/wiki/Locality_of_reference).
+//! It also reduced the number of pointers from 3 to 2, saving memory.
+//! 
+//! The main disadvantage of this layout is that size and layout of the `Person` object is not
+//! known at compile time; it is only known at runtime, when the lengths of the strings are known.
+//! Working with such layouts in plain Rust is cumbersome, and also requires unsafe code to do
+//! the necessary pointer arithmetic.
+//! 
+//! `varlen` lets you easily define and use such types, without you having to write any
+//! unsafe code. The following code will create an object with the memory layout from above:
+//! 
+//! ```
+//! use varlen::tuple::{Tup3, tup3};
+//! use varlen::str::Str;
+//! use varlen::vbox::VBox;
+//! use varlen::FixedLen;
+//! type Person = Tup3</* age */ FixedLen<usize>, /* name */ Str, /* email */ Str>;
+//! let person: VBox<Person> = VBox::new(tup3::Init(
+//!     FixedLen(16),
+//!     Str::copy_from_str("Harry Potter"),
+//!     Str::copy_from_str("harry.potter@example.com"),
+//! ));
+//! ```
+//! 
+//! # Examples
+//! 
+//! TODO.
+//! 
+//! # Old
+//! 
 //! As conceived by this library, variable-length types consist of a fixed-length header
 //! (the type `Self`), followed by a variable-length tail which follows `Self` in memory.
 //! The header has sufficient information in it to recover the length of the tail.
@@ -91,6 +178,7 @@
 //! s.push(b);
 //! # }
 //! ```
+)]
 
 pub mod array;
 pub mod array_init;
