@@ -23,8 +23,8 @@
 //! # Examples
 //! 
 //! ```
-//! # use varlen::{VBox, Array};
-//! # use crate::varlen::{Layout, VarLen};
+//! use varlen::prelude::*;
+//! use varlen::Layout;
 //! let a = VBox::<Array<u8>>::new(Array::copy_from_slice(&[1u8, 2, 3]));
 //! assert_eq!(&a[..], &[1, 2, 3]);
 //! // Layout is as specified above:
@@ -65,7 +65,7 @@ use core::pin::Pin;
 /// Instead, store it in a type such as [`crate::VBox`] or [`crate::Seq`]:
 /// 
 /// ```
-/// use varlen::{VBox, Array};
+/// use varlen::prelude::*;
 /// let mut a: VBox<Array<u16>> = VBox::new(Array::copy_from_slice(&[1, 2, 3]));
 /// assert_eq!(&a[..], &[1, 2, 3]);
 /// a.as_mut().mut_slice()[2] = 5;
@@ -80,7 +80,7 @@ use core::pin::Pin;
 /// at the expense of not supporting longer arrays:
 /// 
 /// ```
-/// use varlen::{VBox, Array};
+/// use varlen::prelude::*;
 /// // Construction succeeds for short arrays:
 /// let arr: VBox<Array<u16, u8>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());
 /// assert_eq!(&arr[..], &[1, 2, 3]);
@@ -93,7 +93,8 @@ use core::pin::Pin;
 /// The type `Array` uses just enough storage for the length, the payload, plus padding alignment:
 /// 
 /// ```
-/// use varlen::{VBox, Array, VarLen, Layout};
+/// use varlen::prelude::*;
+/// use varlen::Layout;
 /// let arr: VBox<Array<u8, u8>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());
 /// assert_eq!(1 + 3, arr.calculate_layout().size()); 
 /// ```
@@ -108,7 +109,8 @@ pub struct Array<T, Len: ArrayLen = usize> {
 /// # Examples
 ///
 /// ```
-/// use varlen::{VBox, Array, VarLen, Layout};
+/// use varlen::prelude::*;
+/// use varlen::Layout;
 /// let arr: VBox<Array<u8, u8>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());
 /// assert_eq!(1 + 3, arr.calculate_layout().size());
 /// ```
@@ -173,7 +175,7 @@ impl<T> Array<T> {
     /// # Examples
     ///
     /// ```
-    /// # use varlen::{VBox, Array};
+    /// use varlen::prelude::*;
     /// let a = VBox::<Array<u8>>::new(Array::copy_from_slice(&[1, 2, 3]));
     /// assert_eq!(&a[..], &[1, 2, 3]);
     /// ```
@@ -189,7 +191,7 @@ impl<T> Array<T> {
     /// # Examples
     ///
     /// ```
-    /// # use varlen::{VBox, Array};
+    /// use varlen::prelude::*;
     /// let a: VBox<Array<Box<u16>>> = VBox::new(Array::clone_from_slice(&[Box::new(1), Box::new(2)]));
     /// assert_eq!(&a[..], &[Box::new(1), Box::new(2)]);
     /// ```
@@ -208,7 +210,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     /// # Examples
     ///
     /// ```
-    /// # use varlen::{VBox, Array};
+    /// use varlen::prelude::*;
     /// let mut a = VBox::<Array<u16>>::new(Array::copy_from_slice(&[1, 2, 3]));
     /// a.as_mut().mut_slice()[2] = 5;
     /// assert_eq!(&a[..], &[1, 2, 5]);
@@ -230,7 +232,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     /// # Examples
     ///
     /// ```
-    /// # use varlen::{VBox, Array};
+    /// use varlen::prelude::*;
     /// // Length fits in u8:
     /// let a: VBox<Array<u8, u8>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());
     /// assert_eq!(&a[..], &[1, 2, 3]);
@@ -255,7 +257,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     /// # Examples
     ///
     /// ```
-    /// # use varlen::{VBox, Array};
+    /// use varlen::prelude::*;
     /// // Length fits in u8:
     /// let a: VBox<Array<Box<u8>, u8>> = VBox::new(Array::try_clone_from_slice(&[Box::new(1), Box::new(2)]).unwrap());
     /// assert_eq!(&a[..], &[Box::new(1), Box::new(2)]);
@@ -282,7 +284,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
 /// # Examples
 ///
 /// ```
-/// # use varlen::{Array, VBox};
+/// use varlen::prelude::*;
 /// use varlen::array::SizedInit;
 /// use varlen::array_init::FillSequentially;
 /// let a: VBox<Array<u8>> = VBox::new(SizedInit(4usize, FillSequentially(|i| (i as u8) * 2)));
@@ -330,7 +332,7 @@ unsafe impl<T, Len: ArrayLen, Init: ArrayInitializer<T>> Initializer<Array<T, Le
 /// # Examples:
 ///
 /// ```
-/// use varlen::array::ArrayLen;
+/// use varlen::prelude::*;
 /// assert_eq!(Some(4u8), u8::from_usize(4usize));
 /// ```
 pub trait ArrayLen: 'static + Copy + private::Sealed {
@@ -339,7 +341,7 @@ pub trait ArrayLen: 'static + Copy + private::Sealed {
     /// # Examples
     ///
     /// ```
-    /// # use varlen::array::ArrayLen;
+    /// use varlen::prelude::*;
     /// assert_eq!(4usize, 4u8.as_usize());
     /// assert_eq!(u64::MAX as usize, u64::MAX.as_usize());
     /// ```
@@ -350,7 +352,7 @@ pub trait ArrayLen: 'static + Copy + private::Sealed {
     /// # Examples
     ///
     /// ```
-    /// # use varlen::array::ArrayLen;
+    /// use varlen::prelude::*;
     /// assert_eq!(Some(4u8), ArrayLen::from_usize(4));
     /// assert_eq!(None, u8::from_usize(257));
     /// ```

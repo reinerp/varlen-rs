@@ -10,10 +10,7 @@
 //! A fixed-length type (u32), with two variable-length types:
 //! 
 //! ```
-//! use varlen::vbox::VBox;
-//! use varlen::FixedLen;
-//! use varlen::tuple::{Tup3, tup3};
-//! use varlen::str::Str;
+//! use varlen::prelude::*;
 //! type Person = Tup3<FixedLen<u8> /* age */, Str /* name */, Str /* postal address */>;
 //! let person: VBox<Person> = VBox::new(tup3::Init(
 //!     FixedLen(16),
@@ -231,10 +228,8 @@ define_tuple!(
     /// # Examples
     /// 
     /// ```
-    /// use varlen::vbox::VBox;
-    /// use varlen::tuple::{tup2, Tup2};
-    /// use varlen::str::Str;
-    /// use varlen::{VarLen, Layout};
+    /// use varlen::prelude::*;
+    /// use varlen::Layout;
     /// let mut t: VBox<Tup2<Str, Str>> = VBox::new(tup2::Init(
     ///     Str::copy_from_str("hello"),
     ///     Str::copy_from_str("world"),
@@ -254,10 +249,8 @@ define_tuple!(
     /// # Examples
     /// 
     /// ```
-    /// use varlen::vbox::VBox;
-    /// use varlen::tuple::{tup3, Tup3};
-    /// use varlen::str::Str;
-    /// use varlen::{VarLen, Layout};
+    /// use varlen::prelude::*;
+    /// use varlen::Layout;
     /// let mut t: VBox<Tup3<Str, Str, Str>> = VBox::new(tup3::Init(
     ///     Str::copy_from_str("hello"),
     ///     Str::copy_from_str("brave"),
@@ -280,10 +273,8 @@ define_tuple!(
     /// # Examples
     /// 
     /// ```
-    /// use varlen::vbox::VBox;
-    /// use varlen::tuple::{tup4, Tup4};
-    /// use varlen::str::Str;
-    /// use varlen::{VarLen, Layout};
+    /// use varlen::prelude::*;
+    /// use varlen::Layout;
     /// let mut t: VBox<Tup4<Str, Str, Str, Str>> = VBox::new(tup4::Init(
     ///     Str::copy_from_str("hello"),
     ///     Str::copy_from_str("brave"),
@@ -309,10 +300,8 @@ define_tuple!(
     /// # Examples
     /// 
     /// ```
-    /// use varlen::vbox::VBox;
-    /// use varlen::tuple::{tup5, Tup5};
-    /// use varlen::str::Str;
-    /// use varlen::{VarLen, Layout};
+    /// use varlen::prelude::*;
+    /// use varlen::Layout;
     /// let mut t: VBox<Tup5<Str, Str, Str, Str, Str>> = VBox::new(tup5::Init(
     ///     Str::copy_from_str("hello"),
     ///     Str::copy_from_str("brave"),

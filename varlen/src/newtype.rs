@@ -11,11 +11,7 @@
 //! The newtype wrapper helps us ensure this visibility as desired:
 //!
 //! ```
-//! use varlen::newtype::define_varlen_newtype;
-//! use varlen::tuple::{Tup2, tup2};
-//! use varlen::str::Str;
-//! use varlen::{FixedLen, Initializer};
-//! use varlen::vbox::VBox;
+//! use varlen::prelude::*;
 //!
 //! define_varlen_newtype! {
 //!     #[repr(transparent)]
@@ -68,11 +64,7 @@
 /// The newtype wrapper helps us ensure this visibility as desired:
 ///
 /// ```
-/// use varlen::newtype::define_varlen_newtype;
-/// use varlen::tuple::{Tup2, tup2};
-/// use varlen::str::Str;
-/// use varlen::{FixedLen, Initializer};
-/// use varlen::vbox::VBox;
+/// use varlen::prelude::*;
 ///
 /// define_varlen_newtype! {
 ///     #[repr(transparent)]
@@ -142,10 +134,7 @@
 /// The following example shows this in action:
 ///
 /// ```
-/// use varlen::newtype::define_varlen_newtype;
-/// use varlen::tuple::{Tup2, tup2};
-/// use varlen::array::Array;
-/// use varlen::vbox::VBox;
+/// use varlen::prelude::*;
 ///
 /// define_varlen_newtype! {
 ///     #[repr(transparent)]
@@ -255,11 +244,7 @@ pub use define_varlen_newtype;
 /// # Examples
 ///
 /// ```
-/// use varlen::array::{Array, SizedInit};
-/// use varlen::array_init::MoveFrom;
-/// use varlen::newtype::impl_initializer_as_newtype;
-/// use varlen::Initializer;
-/// use varlen::vbox::VBox;
+/// use varlen::prelude::*;
 ///
 /// /// Custom initializer for initializing from arrays of size 3.
 /// pub struct Init3Array(SizedInit<MoveFrom<u16, 3>>);
@@ -287,11 +272,7 @@ pub use define_varlen_newtype;
 /// The following example shows this in action:
 ///
 /// ```
-/// use varlen::array::{Array, SizedInit};
-/// use varlen::array_init::CloneFrom;
-/// use varlen::newtype::impl_initializer_as_newtype;
-/// use varlen::Initializer;
-/// use varlen::vbox::VBox;
+/// use varlen::prelude::*;
 ///
 /// /// Custom initializer for cloning from arrays of size 3.
 /// pub struct Init3Array<'a, T>(SizedInit<CloneFrom<'a, T>>);

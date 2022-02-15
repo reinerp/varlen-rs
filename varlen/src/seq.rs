@@ -30,7 +30,7 @@
     //! you can iterate through elements of the sequence:
     //! 
     //! ```
-    //! # use varlen::{Seq, Str};
+    //! use varlen::prelude::*;
     //! let mut seq: Seq<Str> = Seq::new();
     //! seq.push(Str::copy_from_str("hello"));
     //! seq.push(Str::copy_from_str("good"));
@@ -59,8 +59,7 @@ use core::ptr::NonNull;
 /// # Examples
 ///
 /// ```
-/// use varlen::seq::{Seq, seq};
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 /// let s: Seq<Str> = seq![Str::copy_from_str("hello"), Str::copy_from_str("world")];
 /// let vec: Vec<&str> = s.iter().map(|s| &s[..]).collect();
 /// assert_eq!(&vec[..], &["hello", "world"]);
@@ -88,8 +87,7 @@ pub use seq;
 /// Generic operation on a [`Seq<T, I>`] independent of indexing style:
 ///
 /// ```
-/// use varlen::seq::{seq, Seq, Indexing, CheckedIndexing};
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 /// fn sum_lengths<I: Indexing>(s: &Seq<Str, I>) -> usize {
 ///     let mut result = 0;
 ///     for st in s.iter() {
@@ -100,7 +98,7 @@ pub use seq;
 ///
 /// let seq1: Seq<Str> = seq![Str::copy_from_str("hello"), Str::copy_from_str("world")];
 /// assert_eq!(sum_lengths(&seq1), 10);
-/// let seq2: Seq<Str, CheckedIndexing> = seq![Str::copy_from_str("au"), Str::copy_from_str("revoir")];
+/// let seq2: IndexableSeq<Str> = seq![Str::copy_from_str("au"), Str::copy_from_str("revoir")];
 /// assert_eq!(sum_lengths(&seq2), 8)
 /// ```
 pub trait Indexing: private::Sealed {}
@@ -139,8 +137,7 @@ mod private {
 /// # Examples
 ///
 /// ```
-/// use varlen::seq::Seq;
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 ///
 /// let mut seq = Seq::new_minimal();
 /// seq.push(Str::copy_from_str("hello"));
@@ -198,8 +195,7 @@ impl Indexing for UncheckedIndexing {}
 /// # Examples
 ///
 /// ```
-/// use varlen::seq::Seq;
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 ///
 /// let mut seq = Seq::new_indexable();
 /// seq.push(Str::copy_from_str("hello"));
@@ -329,7 +325,7 @@ impl Indexing for CheckedIndexing {}
 /// you can iterate through elements of the sequence:
 /// 
 /// ```
-/// # use varlen::{Seq, Str};
+/// use varlen::prelude::*;
 /// let mut seq: Seq<Str> = Seq::new();
 /// seq.push(Str::copy_from_str("hello"));
 /// seq.push(Str::copy_from_str("good"));
@@ -355,7 +351,7 @@ impl Indexing for CheckedIndexing {}
 /// skip values:
 /// 
 /// ```
-/// # use varlen::{Seq, Str};
+/// use varlen::prelude::*;
 /// let mut seq: Seq<Str<u16>> = Seq::new();
 /// assert_eq!(0, seq.offset());
 /// seq.push(Str::try_copy_from_str("hello").unwrap());
@@ -373,7 +369,7 @@ impl Indexing for CheckedIndexing {}
 /// 
 /// ```
 /// // ... continued
-/// # use varlen::{Seq, Str};
+/// # use varlen::prelude::*;
 /// # let mut seq: Seq<Str<u16>> = Seq::new();
 /// # assert_eq!(0, seq.offset());
 /// # seq.push(Str::try_copy_from_str("hello").unwrap());
@@ -391,9 +387,8 @@ impl Indexing for CheckedIndexing {}
 /// In [`Seq<T, CheckedIndexing>`] indexing by offset is available and safe:
 /// 
 /// ```
-/// # use varlen::{Seq, Str};
-/// # use varlen::seq::CheckedIndexing;
-/// let mut seq: Seq<Str<u16>, CheckedIndexing> = Seq::new();
+/// use varlen::prelude::*;
+/// let mut seq: IndexableSeq<Str<u16>> = Seq::new();
 /// seq.push(Str::try_copy_from_str("hello").unwrap());
 /// assert_eq!(4, seq.offset());
 /// seq.push(Str::try_copy_from_str("fantastic").unwrap());
@@ -429,7 +424,6 @@ impl Indexing for CheckedIndexing {}
 /// 
 /// Maintaining this bitmap adds a memory overhead of 1 bit per [`T::ALIGN`](VarLen::ALIGN) bytes (at most 12.5% 
 /// overhead in the case `T::ALIGN=1`), and slightly increases the cost of [`Seq::push`].
-
 )]
 pub struct Seq<T: VarLen, Idx: Indexing = UncheckedIndexing> {
     // Actually aligned to T::ALIGN, which is at least as large as core::mem::align_of::<T>().
@@ -449,8 +443,7 @@ pub struct Seq<T: VarLen, Idx: Indexing = UncheckedIndexing> {
 /// # Examples
 ///
 /// ```
-/// use varlen::seq::IndexableSeq;
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 ///
 /// let mut seq = IndexableSeq::new();
 /// seq.push(Str::copy_from_str("hello"));
@@ -539,8 +532,7 @@ impl<T: VarLen> Seq<T> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     ///
     /// let mut seq = Seq::new_minimal();
     /// seq.push(Str::copy_from_str("hello"));
@@ -561,8 +553,7 @@ impl<T: VarLen> Seq<T, CheckedIndexing> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     ///
     /// let mut seq = Seq::new_indexable();
     /// seq.push(Str::copy_from_str("hello"));
@@ -584,8 +575,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let mut seq: Seq<Str> = Seq::new();
     /// seq.push(Str::copy_from_str("hello"));
     /// seq.push(Str::copy_from_str("world"));
@@ -608,8 +598,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let mut seq: Seq<Str> = Seq::new_minimal();
     /// assert_eq!(seq.len(), 0);
     /// seq.push(Str::copy_from_str("hello"));
@@ -627,8 +616,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let mut seq: Seq<Str<u32>> = Seq::new_minimal();
     /// assert_eq!(seq.capacity_in_offsets(), 0);
     /// seq.push(Str::try_copy_from_str("hello").unwrap());
@@ -650,8 +638,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let mut seq: Seq<Str<u32>> = Seq::new_minimal();
     /// assert_eq!(seq.offset(), 0);
     /// seq.push(Str::try_copy_from_str("hello").unwrap());
@@ -669,7 +656,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::{Seq, Str};
+    /// use varlen::prelude::*;
     /// let mut seq: Seq<Str> = Seq::new();
     /// seq.push(Str::copy_from_str("hello"));
     /// seq.push(Str::copy_from_str("good"));
@@ -716,8 +703,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::{seq, Seq};
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let s: Seq<Str>  = seq![Str::copy_from_str("hello"), Str::copy_from_str("world")];
     /// let total_len: usize = s.iter().map(|s| s.len()).sum();
     /// assert_eq!(10, total_len);
@@ -736,8 +722,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::{seq, Seq};
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let mut s: Seq<Str> = seq![Str::copy_from_str("hello"), Str::copy_from_str("world")];
     /// for str in s.iter_mut() {
     ///     str.mut_slice().make_ascii_uppercase();
@@ -760,8 +745,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::{Seq, seq};
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let s: Seq<Str<u16>> = seq![
     ///     Str::try_copy_from_str("hello").unwrap(),
     ///     Str::try_copy_from_str("world").unwrap(),
@@ -775,9 +759,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// Panics if this element isn't from this sequence's storage.
     ///
     /// ```should_panic
-    /// use varlen::seq::{Seq, seq};
-    /// use varlen::str::Str;
-    /// use varlen::vbox::VBox;
+    /// use varlen::prelude::*;
     /// let s: Seq<Str> = seq![
     ///     Str::copy_from_str("hello"),
     ///     Str::copy_from_str("world"),
@@ -803,8 +785,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Example
     ///
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     ///
     /// let mut seq = Seq::new_minimal();
     /// seq.push(Str::copy_from_str("hello"));
@@ -843,8 +824,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Example
     ///
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     ///
     /// let mut seq = Seq::new_minimal();
     /// seq.push(Str::copy_from_str("hello"));
@@ -886,8 +866,7 @@ impl<T: VarLen, Idx: Indexing> Seq<T, Idx> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::{Seq, seq};
-    /// use varlen::FixedLen;
+    /// use varlen::prelude::*;
     /// use std::sync::atomic::{AtomicUsize, Ordering};
     ///
     /// struct CountsDropCalls(usize);
@@ -955,8 +934,7 @@ impl<T: VarLen> Seq<T, CheckedIndexing> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     ///
     /// let mut seq = Seq::new_indexable();
     /// seq.push(Str::copy_from_str("hello"));
@@ -984,8 +962,7 @@ impl<T: VarLen> Seq<T, CheckedIndexing> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     ///
     /// let mut seq = Seq::new_indexable();
     /// seq.push(Str::copy_from_str("hello"));
@@ -1013,8 +990,7 @@ impl<T: VarLen> Seq<T, CheckedIndexing> {
     ///
     /// # Examples
     /// ```
-    /// use varlen::seq::Seq;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     ///
     /// let mut seq = Seq::new_indexable();
     /// seq.push(Str::copy_from_str("hello"));
@@ -1055,8 +1031,7 @@ impl<T: VarLen, Idx: Indexing> Drop for Seq<T, Idx> {
 /// # Examples
 ///
 /// ```
-/// use varlen::seq::Seq;
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 /// let mut seq = Seq::new_minimal();
 /// seq.push(Str::copy_from_str("hello"));
 /// seq.extend(["brave", "new", "world"]
@@ -1085,8 +1060,7 @@ impl<T: VarLen, Init: Initializer<T>, Idx: Indexing> Extend<Init> for Seq<T, Idx
 /// # Examples
 ///
 /// ```
-/// use varlen::seq::Seq;
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 /// let seq: Seq<Str> = ["hello", "world"]
 ///     .iter()
 ///     .map(|s| Str::copy_from_str(s))
@@ -1112,7 +1086,7 @@ impl<T: VarLen, Init: Initializer<T>, Idx: Indexing> FromIterator<Init> for Seq<
 /// # Examples
 ///
 /// ```
-/// use varlen::{Seq, Str};
+/// use varlen::prelude::*;
 /// let mut seq: Seq<Str> = Seq::new();
 /// seq.push(Str::copy_from_str("hello"));
 /// seq.push(Str::copy_from_str("good"));
@@ -1135,7 +1109,7 @@ impl<'a, T: VarLen> Iter<'a, T> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::{Seq, Str};
+    /// use varlen::prelude::*;
     /// let mut seq: Seq<Str> = Seq::new();
     /// seq.push(Str::copy_from_str("hello"));
     /// seq.push(Str::copy_from_str("good"));
@@ -1192,8 +1166,7 @@ impl<'a, T: VarLen> ExactSizeIterator for Iter<'a, T> {
 /// # Examples
 ///
 /// ```
-/// use varlen::seq::{seq, Seq};
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 /// let mut s: Seq<Str> = seq![Str::copy_from_str("hello"), Str::copy_from_str("world")];
 /// for str in s.iter_mut() {
 ///     str.mut_slice().make_ascii_uppercase();
@@ -1218,7 +1191,7 @@ impl<'a, T: VarLen> IterMut<'a, T> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::{Seq, Str, seq};
+    /// use varlen::prelude::*;
     /// let mut seq: Seq<Str> = seq![
     ///     Str::copy_from_str("hello"),
     ///     Str::copy_from_str("good"),
@@ -1281,8 +1254,7 @@ impl<'a, T: VarLen> ExactSizeIterator for IterMut<'a, T> {
 /// # Examples
 ///
 /// ```
-/// use varlen::seq::{Seq, seq};
-/// use varlen::FixedLen;
+/// use varlen::prelude::*;
 /// use std::sync::atomic::{AtomicUsize, Ordering};
 ///
 /// struct CountsDropCalls(usize);

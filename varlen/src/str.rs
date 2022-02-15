@@ -23,8 +23,8 @@
     //! # Examples
     //! 
     //! ```
-    //! # use varlen::{VBox, Str};
-    //! # use crate::varlen::{Layout, VarLen};
+    //! use varlen::prelude::*;
+    //! use varlen::Layout;
     //! let s = VBox::new(Str::copy_from_str("hello"));
     //! assert_eq!(&s[..], "hello");
     //! // Layout is as specified above:
@@ -62,8 +62,8 @@ define_varlen_newtype! {
     /// # Examples
     ///
     /// ```
-    /// # use varlen::{VBox, Str};
-    /// # use crate::varlen::{Layout, VarLen};
+    /// use varlen::prelude::*;
+    /// use varlen::Layout;
     /// let s = VBox::new(Str::copy_from_str("hello"));
     /// assert_eq!(&s[..], "hello");
     /// // Layout is as specified above:
@@ -77,7 +77,7 @@ define_varlen_newtype! {
     /// integer type to express:
     ///
     /// ```
-    /// # use varlen::{VBox, Str};
+    /// use varlen::prelude::*;
     /// // Short string fits:
     /// let s: VBox<Str<u8>> = VBox::new(Str::try_copy_from_str("hello").unwrap());
     /// // Long string doesn't fit:
@@ -111,7 +111,7 @@ impl<Len: ArrayLen> Str<Len> {
     /// # Examples
     ///
     /// ```
-    /// # use varlen::{VBox, Str};
+    /// use varlen::prelude::*;
     /// let mut s = VBox::new(Str::copy_from_str("hello"));
     /// s.as_mut().mut_slice().make_ascii_uppercase();
     /// assert_eq!(&s[..], "HELLO");
@@ -132,7 +132,7 @@ impl Str {
     /// # Examples
     ///
     /// ```
-    /// # use varlen::{VBox, Str};
+    /// use varlen::prelude::*;
     /// let s = VBox::new(Str::copy_from_str("hello"));
     /// assert_eq!(&s[..], "hello");
     /// ```
@@ -145,7 +145,7 @@ impl<Len: ArrayLen> Str<Len> {
     /// Initializes a [`Str`] from an existing [`&str`], or returns `None` if it doesn't fit in the length field.
     ///
     /// ```
-    /// # use varlen::{VBox, Str};
+    /// use varlen::prelude::*;
     /// // Short string fits:
     /// let s: VBox<Str<u8>> = VBox::new(Str::try_copy_from_str("hello").unwrap());
     /// // Long string doesn't fit:

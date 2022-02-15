@@ -6,10 +6,7 @@
 //!
 //! ```
 //! # #[cfg(feature = "bumpalo")] {
-//! use varlen::str::Str;
-//! use varlen::owned::Owned;
-//! use varlen::tuple::{Tup2, tup2};
-//! use varlen::FixedLen;
+//! use varlen::prelude::*;
 //! type TypeWithDrop = Tup2<FixedLen<Box<u32>>, Str>;
 //! let arena = bumpalo::Bump::new();
 //! let owned: Owned<TypeWithDrop> = Owned::new_in(
@@ -37,10 +34,7 @@ use core::ptr::NonNull;
 ///
 /// ```
 /// #[cfg(feature = "bumpalo")] {
-/// use varlen::str::Str;
-/// use varlen::owned::Owned;
-/// use varlen::tuple::{Tup2, tup2};
-/// use varlen::FixedLen;
+/// use varlen::prelude::*;
 /// type TypeWithDrop = Tup2<FixedLen<Box<u32>>, Str>;
 /// let arena = bumpalo::Bump::new();
 /// let owned: Owned<TypeWithDrop> = Owned::new_in(
@@ -64,10 +58,7 @@ use core::ptr::NonNull;
 /// potentially dropping them one-by-bone:
 ///
 /// ```
-/// use varlen::VarLen;
-/// use varlen::seq::Seq;
-/// use varlen::str::Str;
-/// use varlen::owned::Owned;
+/// use varlen::prelude::*;
 /// fn consume_seq<T: VarLen>(mut seq: Seq<T>) {
 ///     for t in seq.take_elems() {
 ///         let t: Owned<T> = t;
@@ -96,8 +87,7 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
     /// Safe roundtripping through a raw pointer:
     ///
     /// ```
-    /// use varlen::owned::Owned;
-    /// use varlen::VarLen;
+    /// use varlen::prelude::*;
     /// fn roundtrip<T: VarLen>(x: Owned<T>) -> Owned<T> {
     ///     unsafe {
     ///         let p = x.into_raw();
@@ -124,8 +114,7 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
     /// Safe roundtripping through a raw pointer:
     ///
     /// ```
-    /// use varlen::owned::Owned;
-    /// use varlen::VarLen;
+    /// use varlen::prelude::*;
     /// fn roundtrip<T: VarLen>(x: Owned<T>) -> Owned<T> {
     ///     unsafe {
     ///         let p = x.into_raw();
@@ -145,8 +134,7 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
     ///
     /// ```
     /// # #[cfg(feature = "bumpalo")] {
-    /// use varlen::owned::Owned;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// use bumpalo::Bump;
     ///
     /// let arena = Bump::new();
@@ -168,8 +156,7 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
     /// ```
     /// # #[cfg(feature = "bumpalo")] {
     /// use bumpalo::Bump;
-    /// use varlen::owned::Owned;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let arena = Bump::new();
     /// let s = Owned::new_in(Str::copy_from_str("hello"), &arena);
     /// let s = s.leak();
@@ -188,8 +175,7 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
     /// ```
     /// # #[cfg(feature = "bumpalo")] {
     /// use bumpalo::Bump;
-    /// use varlen::owned::Owned;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let arena = Bump::new();
     /// let s = Owned::new_in(Str::copy_from_str("hello"), &arena);
     /// assert_eq!("hello", &s[..]);

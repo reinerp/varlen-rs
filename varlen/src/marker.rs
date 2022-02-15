@@ -9,8 +9,7 @@
 /// Variable-length fields of `#[define_varlen]` structs are `FieldMarker`:
 ///
 /// ```
-/// use varlen::define_varlen;
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 /// use varlen::marker::FieldMarker;
 ///
 /// #[define_varlen]
@@ -58,8 +57,7 @@ impl<T> FieldMarker<T> {
 /// Variable-length array fields of `#[define_varlen]` structs are `ArrayMarker`:
 ///
 /// ```
-/// use varlen::define_varlen;
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 /// use varlen::marker::ArrayMarker;
 ///
 /// #[define_varlen]

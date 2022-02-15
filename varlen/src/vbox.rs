@@ -8,8 +8,7 @@
 //! Heap-allocated `Str`:
 //!
 //! ```
-//! use varlen::VBox;
-//! use varlen::str::Str;
+//! use varlen::prelude::*;
 //! let s = VBox::new(Str::copy_from_str("hello"));
 //! assert_eq!("hello", &s[..]);
 //! ```
@@ -27,8 +26,7 @@ use core::ptr::NonNull;
 /// Heap-allocated `Str`:
 ///
 /// ```
-/// use varlen::VBox;
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 /// let s = VBox::new(Str::copy_from_str("hello"));
 /// assert_eq!("hello", &s[..]);
 /// ```
@@ -47,8 +45,7 @@ impl<T: VarLen> VBox<T> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::VBox;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let s = VBox::new(Str::copy_from_str("hello"));
     /// assert_eq!("hello", &s[..]);
     /// ```
@@ -74,8 +71,7 @@ impl<T: VarLen> VBox<T> {
     /// # Examples
     ///
     /// ```
-    /// use varlen::VBox;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     /// let mut s = VBox::new(Str::copy_from_str("Hello"));
     /// assert_eq!("Hello", &s[..]);
     /// s.as_mut().mut_slice().make_ascii_uppercase();
@@ -102,8 +98,7 @@ impl<T: VarLen> VBox<T> {
     /// Safe roundtripping through a raw pointer:
     ///
     /// ```
-    /// use varlen::vbox::VBox;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     ///
     /// let b = VBox::new(Str::copy_from_str("hello"));
     /// let b = unsafe {
@@ -133,8 +128,7 @@ impl<T: VarLen> VBox<T> {
     /// Safe roundtripping through a raw pointer:
     ///
     /// ```
-    /// use varlen::vbox::VBox;
-    /// use varlen::str::Str;
+    /// use varlen::prelude::*;
     ///
     /// let b = VBox::new(Str::copy_from_str("hello"));
     /// let b = unsafe {
@@ -182,9 +176,7 @@ impl<T: VarLen> core::ops::Deref for VBox<T> {
 /// Pushing a [`VBox<T>`] onto a [`crate::seq::Seq<T>`]:
 ///
 /// ```
-/// use varlen::vbox::VBox;
-/// use varlen::seq::Seq;
-/// use varlen::str::Str;
+/// use varlen::prelude::*;
 ///
 /// let mut seq: Seq<Str> = Seq::new();
 /// let b = VBox::new(Str::copy_from_str("hello"));

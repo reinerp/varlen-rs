@@ -19,7 +19,7 @@
 //! 
 //! ```
 //! type Person = (/* age */ usize, /* name */ Box<str>, /* email */ Box<str>);
-//! let person = (16, Box::from("Harry Potter"), Box::from("harry.potter@example.com"));
+//! let person: Person = (16, Box::from("Harry Potter"), Box::from("harry.potter@example.com"));
 //! ```
 //! 
 //! ... is represented in memory like this, with three separately allocated objects:
@@ -67,10 +67,7 @@
 //! unsafe code. The following code will create an object with the memory layout from above:
 //! 
 //! ```
-//! use varlen::tuple::{Tup3, tup3};
-//! use varlen::str::Str;
-//! use varlen::vbox::VBox;
-//! use varlen::FixedLen;
+//! use varlen::prelude::*;
 //! type Person = Tup3</* age */ FixedLen<usize>, /* name */ Str, /* email */ Str>;
 //! let person: VBox<Person> = VBox::new(tup3::Init(
 //!     FixedLen(16),
@@ -187,6 +184,7 @@ pub mod macro_support;
 pub mod marker;
 pub mod newtype;
 pub mod owned;
+pub mod prelude;
 pub mod seq;
 pub mod str;
 pub mod tuple;

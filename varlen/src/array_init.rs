@@ -10,23 +10,21 @@
 //! Initializing a `[T; N]` from an initializer:
 //!
 //! ```
-//! use varlen::array_init;
+//! use varlen::prelude::*;
 //!
-//! let arr: [u16; 4] = array_init::new_array(array_init::FillWithDefault);
+//! let arr: [u16; 4] = new_array(FillWithDefault);
 //! assert_eq!([0, 0, 0, 0], arr);
 //!
-//! let arr2: [u16; 4] = array_init::new_array(array_init::FillSequentially(|i| (i * 2) as u16));
+//! let arr2: [u16; 4] = new_array(FillSequentially(|i| (i * 2) as u16));
 //! assert_eq!([0, 2, 4, 6], arr2);
 //! ```
 //!
 //! Initializing a `varlen::array::Array<T>` from an initializer:
 //!
 //! ```
-//! use varlen::array_init;
-//! use varlen::array::{Array, SizedInit};
-//! use varlen::vbox::VBox;
+//! use varlen::prelude::*;
 //!
-//! let arr: VBox<Array<u16>> = VBox::new(SizedInit(4, array_init::FillSequentially(|i| (i * 2) as u16)));
+//! let arr: VBox<Array<u16>> = VBox::new(SizedInit(4, FillSequentially(|i| (i * 2) as u16)));
 //! assert_eq!(&[0, 2, 4, 6], &arr[..]);
 //! ```
 
@@ -45,9 +43,9 @@ impl<T> HasUninit for T {
 /// # Examples
 ///
 /// ```
-/// use varlen::array_init;
+/// use varlen::prelude::*;
 ///
-/// let arr: [u16; 4] = array_init::new_array(array_init::FillSequentially(|i| (i * 2) as u16));
+/// let arr: [u16; 4] = new_array(FillSequentially(|i| (i * 2) as u16));
 /// assert_eq!([0, 2, 4, 6], arr);
 /// ```
 pub fn new_array<const N: usize, T>(init: impl ArrayInitializer<T>) -> [T; N] {
@@ -69,7 +67,7 @@ pub fn new_array<const N: usize, T>(init: impl ArrayInitializer<T>) -> [T; N] {
 /// An initializer that fills an array from end to start:
 ///
 /// ```
-/// use varlen::array_init::ArrayInitializer;
+/// use varlen::prelude::*;
 /// use std::mem::MaybeUninit;
 ///
 /// struct WriteBackwardsPowersOf3;
@@ -90,7 +88,7 @@ pub unsafe trait ArrayInitializer<T> {
     ///
     /// ```
     /// use std::mem::MaybeUninit;
-    /// use varlen::array_init::{FillWithDefault, ArrayInitializer};
+    /// use varlen::prelude::*;
     /// const UNINIT_U16: MaybeUninit<u16> = MaybeUninit::uninit();
     /// let mut arr = [UNINIT_U16; 4];
     /// FillWithDefault.initialize(&mut arr[..]);
@@ -106,7 +104,7 @@ pub unsafe trait ArrayInitializer<T> {
 /// # Example
 ///
 /// ```
-/// use varlen::array_init::{FromIterPrefix, new_array};
+/// use varlen::prelude::*;
 /// let iter = std::iter::successors(Some(3), |i| Some(i * 3));
 /// let arr: [u16; 5] = new_array(FromIterPrefix(iter));
 /// assert_eq!(arr, [3, 9, 27, 81, 243]);
@@ -117,7 +115,7 @@ pub unsafe trait ArrayInitializer<T> {
 /// Panics if the iterator yields fewer elements than the desired output size.
 ///
 /// ```should_panic
-/// use varlen::array_init::{FromIterPrefix, new_array};
+/// use varlen::prelude::*;
 /// let iter = std::iter::successors(Some(3), |i| Some(i * 3));
 /// let arr: [u16; 5] = new_array(FromIterPrefix(iter.take(3))); // Panics
 /// ```
@@ -142,7 +140,7 @@ unsafe impl<T, Iter: Iterator<Item = T>> ArrayInitializer<T> for FromIterPrefix<
 /// # Examples
 ///
 /// ```
-/// use varlen::array_init::{new_array, FillSequentially};
+/// use varlen::prelude::*;
 /// let arr: [u16; 5] = new_array(FillSequentially(|i| (i as u16) * 2));
 /// assert_eq!(arr, [0, 2, 4, 6, 8]);
 /// ```
@@ -150,7 +148,7 @@ unsafe impl<T, Iter: Iterator<Item = T>> ArrayInitializer<T> for FromIterPrefix<
 /// Stateful functions are also allowed:
 ///
 /// ```
-/// use varlen::array_init::{new_array, FillSequentially};
+/// use varlen::prelude::*;
 /// let mut state = 1;
 /// let arr: [u16; 5] = new_array(FillSequentially(|_| {
 ///     state = state * 3;
@@ -173,7 +171,7 @@ unsafe impl<T, Lambda: FnMut(usize) -> T> ArrayInitializer<T> for FillSequential
 /// # Examples
 ///
 /// ```
-/// use varlen::array_init::{new_array, FillWithDefault};
+/// use varlen::prelude::*;
 /// let arr: [u16; 5] = new_array(FillWithDefault);
 /// assert_eq!(arr, [0, 0, 0, 0, 0]);
 /// ```
@@ -190,7 +188,7 @@ unsafe impl<T: Default> ArrayInitializer<T> for FillWithDefault {
 /// # Examples
 ///
 /// ```
-/// use varlen::array_init::{new_array, CopyFrom};
+/// use varlen::prelude::*;
 /// let arr: [u16; 5] = new_array(CopyFrom(&[3, 1, 4, 1, 5]));
 /// assert_eq!(arr, [3, 1, 4, 1, 5]);
 /// ```
@@ -200,12 +198,12 @@ unsafe impl<T: Default> ArrayInitializer<T> for FillWithDefault {
 /// Panics if the source and destination arrays have different length.
 ///
 /// ```should_panic
-/// use varlen::array_init::{new_array, CopyFrom};
+/// use varlen::prelude::*;
 /// let arr: [u16; 6] = new_array(CopyFrom(&[3, 1, 4, 1, 5]));  // Panic
 /// ```
 ///
 /// ```should_panic
-/// use varlen::array_init::{new_array, CopyFrom};
+/// use varlen::prelude::*;
 /// let arr: [u16; 4] = new_array(CopyFrom(&[3, 1, 4, 1, 5]));  // Panic
 /// ```
 pub struct CopyFrom<'a, T>(pub &'a [T]);
@@ -224,7 +222,7 @@ unsafe impl<'a, T: Copy> ArrayInitializer<T> for CopyFrom<'a, T> {
 /// # Examples
 ///
 /// ```
-/// use varlen::array_init::{new_array, CloneFrom};
+/// use varlen::prelude::*;
 ///
 /// let src = ["hello".to_string(), "world".to_string()];
 /// let arr: [String; 2] = new_array(CloneFrom(&src));
@@ -236,7 +234,7 @@ unsafe impl<'a, T: Copy> ArrayInitializer<T> for CopyFrom<'a, T> {
 /// Panics if the source and destination have different lengths.
 ///
 /// ```should_panic
-/// # use varlen::array_init::{new_array, CloneFrom};
+/// # use varlen::prelude::*;
 /// #
 /// # let src = ["hello".to_string(), "world".to_string()];
 /// let arr: [String; 1] = new_array(CloneFrom(&src));  // Panics
@@ -257,7 +255,7 @@ unsafe impl<'a, T: Clone> ArrayInitializer<T> for CloneFrom<'a, T> {
 /// # Examples
 ///
 /// ```
-/// use varlen::array_init::{new_array, MoveFrom};
+/// use varlen::prelude::*;
 ///
 /// let src = ["hello".to_string(), "world".to_string()];
 /// let arr: [String; 2] = new_array(MoveFrom(src));
@@ -269,7 +267,7 @@ unsafe impl<'a, T: Clone> ArrayInitializer<T> for CloneFrom<'a, T> {
 /// Panics if the source and destination have different lengths.
 ///
 /// ```should_panic
-/// # use varlen::array_init::{new_array, MoveFrom};
+/// # use varlen::prelude::*;
 /// #
 /// # let src = ["hello".to_string(), "world".to_string()];
 /// let arr: [String; 1] = new_array(MoveFrom(src));  // Panics
