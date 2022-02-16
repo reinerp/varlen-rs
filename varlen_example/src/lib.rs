@@ -1,6 +1,6 @@
 #![allow(unused)]
 #![allow(dead_code)]
-use varlen::define_varlen;
+use varlen::prelude::*;
 
 #[define_varlen]
 /// This struct contains two lengths and three arrays.

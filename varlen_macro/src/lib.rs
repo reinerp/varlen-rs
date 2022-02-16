@@ -680,7 +680,7 @@ impl FieldGroups {
         self.varlen_fields
             .cat_field_fast
             .push(quote_spanned! { span =>
-                ::varlen::macro_support::cat_field_fast::<#ty, _>(&self, size)
+                ::varlen::macro_support::cat_field_fast::<#ty, _>(self, size)
             });
         self.varlen_fields.drop_field.push(quote_spanned! { span =>
             ::varlen::macro_support::drop_field::<#ty>(p, layout.#ident, layout.#layout_ident);

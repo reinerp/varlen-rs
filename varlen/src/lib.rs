@@ -19,7 +19,8 @@
 //! 
 //! ```
 //! type Person = (/* age */ usize, /* name */ Box<str>, /* email */ Box<str>);
-//! let person: Person = (16, Box::from("Harry Potter"), Box::from("harry.potter@example.com"));
+//! let person: Person = 
+//!     (16, Box::from("Harry Potter"), Box::from("harry.potter@example.com"));
 //! ```
 //! 
 //! ... is represented in memory like this, with three separately allocated objects:
@@ -78,7 +79,92 @@
 //! 
 //! # Examples
 //! 
-//! TODO.
+//! ```
+//! use varlen::prelude::*;
+//! 
+//! // Define a variable-length tuple:
+//! type MyTuple = Tup3<FixedLen<usize>, Str, Str>;
+//! # fn example1() {
+//! let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
+//!     FixedLen(16), Str::copy_from_str("hello"), Str::copy_from_str("world")));
+//! # }
+//! 
+//! // Define a newtype wrapper for it:
+//! define_varlen_newtype! {
+//!     #[repr(transparent)]
+//!     pub struct MyStruct(MyTuple);
+//! 
+//!     with init: struct MyStructInit<_>(_);
+//!     with inner_ref: fn inner(&self) -> &_;
+//!     with inner_mut: fn inner_mut(self: _) -> _;
+//! }
+//! # fn example2() {
+//! # let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
+//! #     FixedLen(16), Str::copy_from_str("hello"), Str::copy_from_str("world")));
+//! let my_struct: VBox<MyStruct> = VBox::new(MyStructInit(my_tuple));
+//! # }
+//! 
+//! // Put multiple objects in a sequence, with tightly packed memory layout:
+//! // let sequence: Seq<MyStruct> = seq![my_struct];
+//! // TODO: clone() implementation.
+//! 
+//! // Define a variable-length struct via a procedural macro (optional crate feature).
+//! #[define_varlen]
+//! struct MyMacroStruct {
+//!     age: usize,
+//!     #[varlen]
+//!     name: Str,
+//!     #[varlen]
+//!     email: Str,
+//!     #[varlen]
+//!     child: MyStruct,
+//! }
+//! # fn example3() {
+//! # let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
+//! #     FixedLen(16), Str::copy_from_str("hello"), Str::copy_from_str("world")));
+//! # let my_struct: VBox<MyStruct> = VBox::new(MyStructInit(my_tuple));
+//! let s: VBox<MyMacroStruct> = VBox::new(
+//!     my_macro_struct::Init{
+//!         age: 16,
+//!         name: Str::copy_from_str("Harry Potter"),
+//!         email: Str::copy_from_str("harry.potter@example.com"),
+//!         child: my_struct,
+//!     }
+//! );
+//! # }
+//! 
+//! // #[define_varlen] also let you directly specify array lengths:
+//! #[define_varlen]
+//! struct MultipleArrays {
+//!     #[controls_layout]
+//!     len: usize,
+//! 
+//!     #[varlen_array]
+//!     array1: [u16; *len],
+//! 
+//!     #[varlen_array]
+//!     array2: [u8; *len],
+//! 
+//!     #[varlen_array]
+//!     half_array: [u16; (*len) / 2],
+//! }
+//! # fn example4() {
+//! let base_array = vec![0u16, 64000, 13, 105];
+//! let a: VBox<MultipleArrays> = VBox::new(multiple_arrays::Init{
+//!     len: base_array.len(),
+//!     array1: FillSequentially(|i| base_array[i]),
+//!     array2: FillSequentially(|i| base_array[base_array.len() - 1 - i] as u8),
+//!     half_array: FillSequentially(|i| base_array[i * 2]),
+//! });
+//! # }
+//! 
+//! # fn main() {
+//! #   example1();
+//! #   example2();
+//! #   example3();
+//! #   example4();
+//! # }
+//! ```
 //! 
 //! # Old
 //! 
