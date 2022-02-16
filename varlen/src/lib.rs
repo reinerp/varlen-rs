@@ -293,7 +293,7 @@ pub use vbox::VBox;
 ///  * a way to report their own size and alignment
 ///    * because of the variable-length
 ///  *
-pub unsafe trait VarLen {
+pub unsafe trait VarLen: Sized {
     /// This type's internal dynamic calculations of where its tail fields are.
     ///
     /// All you can do with this type is get the overall `size()`, and pass the layout
@@ -323,6 +323,60 @@ pub unsafe trait VarLen {
     ///    this object or `calculate_layout_cautious()` on its initializer.
     unsafe fn drop_tail(self: core::pin::Pin<&mut Self>, layout: Self::Layout);
 }
+
+/// Support for cloning variable-length types.
+/// 
+/// # Examples
+/// 
+/// ```
+/// use varlen::prelude::*;
+/// 
+/// let s_box: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+/// let s: &Str = &*s_box;
+/// let seq: Seq<Str> = seq![s.vclone(), s.vclone(), s.vclone()];
+/// let mut iter = seq.iter();
+/// assert_eq!(&iter.next().unwrap()[..], "hello");
+/// assert_eq!(&iter.next().unwrap()[..], "hello");
+/// assert_eq!(&iter.next().unwrap()[..], "hello");
+/// assert!(iter.next().is_none());
+/// ```
+pub trait VClone<'a>: VarLen {
+    type Cloner: Initializer<Self>;
+    fn vclone(&'a self) -> Self::Cloner;
+}
+
+/// Safety: implementor promises that all fields implement VCopy.
+pub unsafe trait VCopy<'a>: VClone<'a> {
+    fn vcopy(&'a self) -> VCopier<'a, Self> {
+        VCopier(self)
+    }
+}
+
+pub struct VCopier<'a, T>(&'a T);
+
+// Safety: implementor of `VCopy` promises that initialization via memcpy
+// is safe.
+unsafe impl<'a, T: VCopy<'a>> Initializer<T> for VCopier<'a, T> {
+    #[inline]
+    fn calculate_layout_cautious(&self) -> Option<T::Layout> {
+        Some(self.0.calculate_layout())
+    }
+
+    #[inline]
+    unsafe fn initialize(self, dst: NonNull<T>, layout: T::Layout) {
+        let size = layout.size();
+        core::ptr::copy_nonoverlapping(
+            self.0 as *const _ as *const u8, 
+            dst.as_ptr() as *mut u8, 
+            size);
+    }
+}
+
+// pub trait VClone: VarLen where for<'a> CloneOf<'a, Self>: Initializer<Self> {}
+// pub trait VCopy: VarLen where for<'a> CopyOf<'a, Self>: Initializer<Self> {}
+
+// pub struct CloneOf<'a, T>(pub &'a T);
+// pub struct CopyOf<'a, T>(pub &'a T);
 
 /// A layout of a variable-length object.
 pub trait Layout: Eq {

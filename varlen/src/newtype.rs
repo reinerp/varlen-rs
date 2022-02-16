@@ -180,7 +180,6 @@ macro_rules! define_varlen_newtype {
         with inner_mut:
             $(#[$mutattrs:meta])*
             $mutvis:vis fn $mut:ident(self: _) -> _;
-
     ) => {
         #[repr(transparent)]
         $(#[$attrs])*

@@ -66,7 +66,8 @@
 //!    is to sort fields from most-aligned to least-aligned.
 )]
 use crate::marker::FieldMarker;
-use crate::{Initializer, VarLen};
+use crate::newtype::impl_initializer_as_newtype;
+use crate::{Initializer, VarLen, VClone, VCopy};
 use core::concat;
 use core::pin::Pin;
 
@@ -96,6 +97,14 @@ macro_rules! define_tuple {
             /// Mutable access to fields of a tuple.
             $(#[$attr])*
             pub struct Muts<'a, $($arg),*>($(pub Pin<&'a mut $arg>),*);
+
+            /// VClone support for a tuple.
+            pub struct Cloner<'a, $($arg: VClone<'a>),*>(pub(super) Init<$(<$arg as VClone<'a>>::Cloner),*>);
+
+            impl_initializer_as_newtype! {
+                impl<('a), $( ( $arg: VClone<'a> ) ),*> Initializer<$name<$($arg),*>> 
+                    for Cloner<'a, $($arg),*> { _ }
+            }
 
             /// Layout of a tuple.
             $(#[$attr])*
@@ -221,6 +230,20 @@ macro_rules! define_tuple {
                 core::ptr::write(dst.as_ptr(), header);
             }
         }
+
+        impl<'a, $($arg: VClone<'a>),*> VClone<'a> for $name<$($arg),*> {
+            type Cloner = $mod::Cloner<'a, $($arg),*>;
+            fn vclone(&'a self) -> Self::Cloner {
+                let $mod::Refs($($fieldname),*) = self.refs();
+                $mod::Cloner(
+                    $mod::Init(
+                        $($fieldname.vclone()),*
+                    )
+                )
+            }
+        }
+
+        unsafe impl<'a, $($arg: VCopy<'a>),*> VCopy<'a> for $name<$($arg),*> { }
     }
 }
 

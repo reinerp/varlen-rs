@@ -32,9 +32,9 @@
     //! ```
 )]
 
-use crate::array::{Array, ArrayLen};
+use crate::array::{Array, ArrayLen, ArrayCloner};
 use crate::newtype::define_varlen_newtype;
-use crate::Initializer;
+use crate::{Initializer, impl_initializer_as_newtype, VClone, VCopy};
 use core::pin::Pin;
 
 define_varlen_newtype! {
@@ -155,3 +155,19 @@ impl<Len: ArrayLen> Str<Len> {
         Some(StrInit(Array::try_copy_from_slice(s.as_bytes())?))
     }
 }
+
+pub struct StrCloner<'a, Len: ArrayLen>(StrInit<ArrayCloner<'a, u8, Len>>);
+
+impl_initializer_as_newtype! {
+    impl<('a), (Len: ArrayLen)> Initializer<Str<Len>> for StrCloner<'a, Len> { _ }
+}
+
+impl<'a, Len: ArrayLen> VClone<'a> for Str<Len> {
+    type Cloner = StrCloner<'a, Len>;
+    fn vclone(&'a self) -> Self::Cloner {
+        StrCloner(StrInit(self.0.vclone()))
+    }
+}
+
+// Safety: Len is Copy (because of ArrayLen), and so is the [u8] payload.
+unsafe impl<'a, Len: ArrayLen> VCopy<'a> for Str<Len> { }

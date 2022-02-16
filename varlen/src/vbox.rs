@@ -13,6 +13,8 @@
 //! assert_eq!("hello", &s[..]);
 //! ```
 
+use crate::VClone;
+
 use super::{Initializer, Layout, VarLen};
 
 use core::alloc;
@@ -201,5 +203,47 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
     #[inline]
     fn calculate_layout_cautious(&self) -> Option<T::Layout> {
         Some(T::calculate_layout(&*self))
+    }
+}
+
+/// Cloning a [`VBox<T>`] uses `T::vclone()`.
+/// 
+/// # Examples
+///
+/// ```
+/// use varlen::prelude::*;
+/// let str: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+/// let str2 = str.clone();
+/// assert_eq!(&str2[..], "hello");
+/// ```
+/// 
+/// # See also
+/// 
+/// It is often better to use [`T::vclone()`](crate::VClone::vclone) or
+/// [`vcopy()`](crate::VCopy::vcopy) instead, which will create a lazy
+/// initializer that directly clones or copies into the destination.
+/// 
+/// ```
+/// use varlen::prelude::*;
+/// let str: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+/// let seq: Seq<Str> = seq![
+///     // Best. Calls memcpy straight into the sequence storage
+///     str.vcopy(),   
+///     // Ok. Does field-by-field copy into the sequence storage.
+///     str.vclone(),  
+///     // Worst. Allocates a temporary VBox<Str>, copies field-by-field to there,
+///     // then coies field-by-field to the sequence storage, then deallocates the
+///     // temporary.
+///     str.clone(),   
+/// ];
+/// let mut iter = seq.iter();
+/// assert_eq!(&iter.next().unwrap()[..], "hello");
+/// assert_eq!(&iter.next().unwrap()[..], "hello");
+/// assert_eq!(&iter.next().unwrap()[..], "hello");
+/// assert!(iter.next().is_none());
+/// ```
+impl<T: for<'a> VClone<'a>> Clone for VBox<T> {
+    fn clone(&self) -> Self {
+        VBox::new(self.vclone())
     }
 }

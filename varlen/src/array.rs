@@ -36,9 +36,9 @@
 //! The main type is [`Array<T>`], valid length types for the array are [`ArrayLen`], its memory layout is
 //! calculated and stored in [`ArrayLayout`], and its general initializer is [`SizedInit`].
 )]
-use crate::array_init::ArrayInitializer;
+use crate::array_init::{ArrayInitializer, CloneFrom};
 use crate::marker::ArrayMarker;
-use crate::{Initializer, Layout, VarLen};
+use crate::{Initializer, Layout, VarLen, VClone, impl_initializer_as_newtype, VCopy};
 use core::pin::Pin;
 
 #[doc = crate::doc_macro::make_svgbobdoc!(
@@ -205,6 +205,21 @@ impl<T> Array<T> {
 
 #[allow(rustdoc::missing_doc_code_examples)]
 impl<T, Len: ArrayLen> Array<T, Len> {
+
+    /// Gets the length of the array at the integer type `Len`.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use varlen::prelude::*;
+    /// let arr: VBox<Array<u8, u16>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());
+    /// assert_eq!(3u16, arr.len_short());  // Gets the length as a u16
+    /// assert_eq!(3usize, arr.len());  // Gets the length as a usize
+    #[inline]
+    pub fn len_short(&self) -> Len {
+        self.len
+    }
+
     /// Gives mutable access to the payload.
     ///
     /// # Examples
@@ -215,6 +230,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     /// a.as_mut().mut_slice()[2] = 5;
     /// assert_eq!(&a[..], &[1, 2, 5]);
     /// ```
+    #[inline]
     pub fn mut_slice(self: Pin<&mut Self>) -> &mut [T] {
         let layout = self.calculate_layout();
         unsafe {
@@ -243,6 +259,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     /// # See also
     ///
     /// When `Len=usize`, you may prefer [`Array::copy_from_slice`] which is guaranteed not to fail.
+    #[inline]
     pub fn try_copy_from_slice(src: &[T]) -> Option<SizedInit<crate::array_init::CopyFrom<T>, Len>>
     where
         T: Copy,
@@ -278,6 +295,21 @@ impl<T, Len: ArrayLen> Array<T, Len> {
         Some(SizedInit(len, crate::array_init::CloneFrom(src)))
     }
 }
+
+pub struct ArrayCloner<'a, T, Len: ArrayLen>(SizedInit<CloneFrom<'a, T>, Len>);
+impl_initializer_as_newtype! {
+    impl<('a), (T: Clone), (Len: ArrayLen)> Initializer<Array<T, Len>> for ArrayCloner<'a, T, Len> { _ }
+}
+
+impl<'a, T: 'a + Clone, Len: ArrayLen> VClone<'a> for Array<T, Len> {
+    type Cloner = ArrayCloner<'a, T, Len>;
+    fn vclone(&'a self) -> Self::Cloner {
+        ArrayCloner(SizedInit(self.len_short(), CloneFrom(&self[..])))
+    }
+}
+
+/// Safety: only fields are T and Len
+unsafe impl<'a, T: 'a + Copy, Len: ArrayLen> VCopy<'a> for Array<T, Len> {}
 
 /// Initializer for an [`Array<T>`] given a specified length and array initializer.
 ///
