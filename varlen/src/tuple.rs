@@ -67,7 +67,7 @@
 )]
 use crate::marker::FieldMarker;
 use crate::newtype::impl_initializer_as_newtype;
-use crate::{Initializer, VarLen, VClone, VCopy};
+use crate::{Initializer, VClone, VCopy, VarLen};
 use core::concat;
 use core::pin::Pin;
 
@@ -102,7 +102,7 @@ macro_rules! define_tuple {
             pub struct Cloner<'a, $($arg: VClone<'a>),*>(pub(super) Init<$(<$arg as VClone<'a>>::Cloner),*>);
 
             impl_initializer_as_newtype! {
-                impl<('a), $( ( $arg: VClone<'a> ) ),*> Initializer<$name<$($arg),*>> 
+                impl<('a), $( ( $arg: VClone<'a> ) ),*> Initializer<$name<$($arg),*>>
                     for Cloner<'a, $($arg),*> { _ }
             }
 

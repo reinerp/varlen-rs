@@ -38,7 +38,7 @@
 )]
 use crate::array_init::{ArrayInitializer, CloneFrom};
 use crate::marker::ArrayMarker;
-use crate::{Initializer, Layout, VarLen, VClone, impl_initializer_as_newtype, VCopy};
+use crate::{impl_initializer_as_newtype, Initializer, Layout, VClone, VCopy, VarLen};
 use core::pin::Pin;
 
 #[doc = crate::doc_macro::make_svgbobdoc!(
@@ -205,11 +205,10 @@ impl<T> Array<T> {
 
 #[allow(rustdoc::missing_doc_code_examples)]
 impl<T, Len: ArrayLen> Array<T, Len> {
-
     /// Gets the length of the array at the integer type `Len`.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::prelude::*;
     /// let arr: VBox<Array<u8, u16>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());

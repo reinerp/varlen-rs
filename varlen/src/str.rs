@@ -32,9 +32,9 @@
     //! ```
 )]
 
-use crate::array::{Array, ArrayLen, ArrayCloner};
+use crate::array::{Array, ArrayCloner, ArrayLen};
 use crate::newtype::define_varlen_newtype;
-use crate::{Initializer, impl_initializer_as_newtype, VClone, VCopy};
+use crate::{impl_initializer_as_newtype, Initializer, VClone, VCopy};
 use core::pin::Pin;
 
 define_varlen_newtype! {
@@ -170,4 +170,4 @@ impl<'a, Len: ArrayLen> VClone<'a> for Str<Len> {
 }
 
 // Safety: Len is Copy (because of ArrayLen), and so is the [u8] payload.
-unsafe impl<'a, Len: ArrayLen> VCopy<'a> for Str<Len> { }
+unsafe impl<'a, Len: ArrayLen> VCopy<'a> for Str<Len> {}

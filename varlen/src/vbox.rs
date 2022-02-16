@@ -207,7 +207,7 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
 }
 
 /// Cloning a [`VBox<T>`] uses `T::vclone()`.
-/// 
+///
 /// # Examples
 ///
 /// ```
@@ -216,13 +216,13 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
 /// let str2 = str.clone();
 /// assert_eq!(&str2[..], "hello");
 /// ```
-/// 
+///
 /// # See also
-/// 
+///
 /// It is often better to use [`T::vclone()`](crate::VClone::vclone) or
 /// [`vcopy()`](crate::VCopy::vcopy) instead, which will create a lazy
 /// initializer that directly clones or copies into the destination.
-/// 
+///
 /// ```
 /// use varlen::prelude::*;
 /// let str: VBox<Str> = VBox::new(Str::copy_from_str("hello"));

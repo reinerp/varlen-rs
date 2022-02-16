@@ -1,9 +1,12 @@
-pub use crate::{VarLen, FixedLen, Initializer, define_varlen, VClone, VCopy};
-pub use crate::array_init::{CloneFrom, CopyFrom, FillSequentially, FillWithDefault, FromIterPrefix, MoveFrom, ArrayInitializer, new_array};
-pub use crate::array::{Array, SizedInit, ArrayLen};
+pub use crate::array::{Array, ArrayLen, SizedInit};
+pub use crate::array_init::{
+    new_array, ArrayInitializer, CloneFrom, CopyFrom, FillSequentially, FillWithDefault,
+    FromIterPrefix, MoveFrom,
+};
 pub use crate::newtype::{define_varlen_newtype, impl_initializer_as_newtype};
 pub use crate::owned::Owned;
-pub use crate::seq::{seq, Indexing, Seq, IndexableSeq};
+pub use crate::seq::{seq, IndexableSeq, Indexing, Seq};
 pub use crate::str::Str;
-pub use crate::tuple::{Tup2, tup2, Tup3, tup3, Tup4, tup4, Tup5, tup5};
+pub use crate::tuple::{tup2, tup3, tup4, tup5, Tup2, Tup3, Tup4, Tup5};
 pub use crate::vbox::VBox;
+pub use crate::{define_varlen, FixedLen, Initializer, VClone, VCopy, VarLen};

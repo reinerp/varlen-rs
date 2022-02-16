@@ -325,12 +325,12 @@ pub unsafe trait VarLen: Sized {
 }
 
 /// Support for cloning variable-length types.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::prelude::*;
-/// 
+///
 /// let s_box: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
 /// let s: &Str = &*s_box;
 /// let seq: Seq<Str> = seq![s.vclone(), s.vclone(), s.vclone()];
@@ -366,9 +366,10 @@ unsafe impl<'a, T: VCopy<'a>> Initializer<T> for VCopier<'a, T> {
     unsafe fn initialize(self, dst: NonNull<T>, layout: T::Layout) {
         let size = layout.size();
         core::ptr::copy_nonoverlapping(
-            self.0 as *const _ as *const u8, 
-            dst.as_ptr() as *mut u8, 
-            size);
+            self.0 as *const _ as *const u8,
+            dst.as_ptr() as *mut u8,
+            size,
+        );
     }
 }
 
