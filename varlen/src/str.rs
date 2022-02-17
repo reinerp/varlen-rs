@@ -156,6 +156,20 @@ impl<Len: ArrayLen> Str<Len> {
     }
 }
 
+/// Initializer type for cloning an array.
+///
+/// Prefer to use `Str::vcopy()` over `Str::vclone()` where possible.
+///
+/// # Examples
+///
+/// ```
+/// use varlen::prelude::*;
+/// let arr = VBox::new(Str::copy_from_str("hello"));
+/// let seq: Seq<Str> = seq![arr.vclone(), arr.vclone(), arr.vclone()];  // Clones the string
+/// for a in seq.iter() {
+///     assert_eq!(&a[..], "hello");
+/// }
+/// ```
 pub struct StrCloner<'a, Len: ArrayLen>(StrInit<ArrayCloner<'a, u8, Len>>);
 
 impl_initializer_as_newtype! {
@@ -169,5 +183,17 @@ impl<'a, Len: ArrayLen> VClone<'a> for Str<Len> {
     }
 }
 
+/// Strings can be copied with fast memcpy.
+///
+/// # Examples
+///
+/// ```
+/// use varlen::prelude::*;
+/// let arr = VBox::new(Str::copy_from_str("hello"));
+/// let seq: Seq<Str> = seq![arr.vcopy(), arr.vcopy(), arr.vcopy()];
+/// for a in seq.iter() {
+///     assert_eq!(&a[..], "hello");
+/// }
+/// ```
 // Safety: Len is Copy (because of ArrayLen), and so is the [u8] payload.
 unsafe impl<'a, Len: ArrayLen> VCopy<'a> for Str<Len> {}

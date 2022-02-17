@@ -295,6 +295,18 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     }
 }
 
+/// Initializer type for cloning an array.
+///
+/// # Examples
+///
+/// ```
+/// use varlen::prelude::*;
+/// let arr = VBox::new(Array::copy_from_slice(&[1u8, 2, 3]));
+/// let seq = seq![arr.vclone(), arr.vclone(), vclone()];  // Clones the array
+/// for a in seq.iter() {
+///     assert_eq!(&a[..], &[1, 2, 3]);
+/// }
+/// ```
 pub struct ArrayCloner<'a, T, Len: ArrayLen>(SizedInit<CloneFrom<'a, T>, Len>);
 impl_initializer_as_newtype! {
     impl<('a), (T: Clone), (Len: ArrayLen)> Initializer<Array<T, Len>> for ArrayCloner<'a, T, Len> { _ }
@@ -307,7 +319,19 @@ impl<'a, T: 'a + Clone, Len: ArrayLen> VClone<'a> for Array<T, Len> {
     }
 }
 
-/// Safety: only fields are T and Len
+/// Arrays can be copied (fast memcpy) if their elements can.
+///
+/// # Examples
+///
+/// ```
+/// use varlen::prelude::*;
+/// let arr = VBox::new(Array::copy_from_slice(&[1u8, 2, 3]));
+/// let seq: Seq<Array<u8>> = seq![arr.vcopy(), arr.vcopy(), arr.vcopy()];  // Copies the array
+/// for a in seq.iter() {
+///     assert_eq!(&a[..], &[1, 2, 3]);
+/// }
+/// ```
+// Safety: only fields are T and Len, which both implement Copy.
 unsafe impl<'a, T: 'a + Copy, Len: ArrayLen> VCopy<'a> for Array<T, Len> {}
 
 /// Initializer for an [`Array<T>`] given a specified length and array initializer.

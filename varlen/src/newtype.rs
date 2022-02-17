@@ -164,6 +164,9 @@
 macro_rules! define_varlen_newtype {
     (
         #[repr(transparent)]
+        $(
+            #[macro_derive($( $derive:ident ),*)]
+        )?
         $(#[$attrs:meta])*
         $tyvis:vis struct $outer:ident $(< $( ( $($generics:tt)* ) ),* >)? ($fieldvis:vis $inner:ty);
 

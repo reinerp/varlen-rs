@@ -55,8 +55,8 @@ pub struct CoolStructWithMutableFields {
 
 #[cfg(test)]
 mod tests {
-    use varlen::define_varlen;
     use varlen::array_init::{FillSequentially, MoveFrom};
+    use varlen::define_varlen;
     use varlen::vbox::VBox;
 
     #[define_varlen]

@@ -83,13 +83,23 @@
 //! use varlen::prelude::*;
 //! 
 //! // Define a variable-length tuple:
-//! type MyTuple = Tup3<FixedLen<usize>, Str, Str>;
+//! type MyTuple = Tup3<FixedLen<usize>, Str, Array<u16>>;
 //! # fn example1() {
 //! let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
-//!     FixedLen(16), Str::copy_from_str("hello"), Str::copy_from_str("world")));
+//!     FixedLen(16), Str::copy_from_str("hello"), Array::copy_from_slice(&[1u16, 2])));
+//! 
+//! // Put multiple objects in a sequence, with tightly packed memory layout:
+//! let sequence: Seq<MyTuple> = seq![my_tuple.vcopy(), my_tuple.vcopy()];
+//! 
+//! # #[cfg(feature = "bumpalo")]
+//! # {
+//! // Or arena-allocate them, if the "bumpalo" crate feature is enabled:
+//! let arena = bumpalo::Bump::new();
+//! let arena_tuple: Owned<MyTuple> = Owned::new_in(my_tuple.vcopy(), &arena);
+//! # }
 //! # }
 //! 
-//! // Define a newtype wrapper for it:
+//! // Define a newtype wrapper for the tuple:
 //! define_varlen_newtype! {
 //!     #[repr(transparent)]
 //!     pub struct MyStruct(MyTuple);
@@ -100,15 +110,12 @@
 //! }
 //! # fn example2() {
 //! # let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
-//! #     FixedLen(16), Str::copy_from_str("hello"), Str::copy_from_str("world")));
+//! #     FixedLen(16), Str::copy_from_str("hello"), Array::copy_from_slice(&[1u16, 2])));
 //! let my_struct: VBox<MyStruct> = VBox::new(MyStructInit(my_tuple));
 //! # }
 //! 
-//! // Put multiple objects in a sequence, with tightly packed memory layout:
-//! // let sequence: Seq<MyStruct> = seq![my_struct];
-//! // TODO: clone() implementation.
-//! 
-//! // Define a variable-length struct via a procedural macro (optional crate feature).
+//! // Define a variable-length struct via a procedural macro, if the "macro"
+//! // crate feature is enabled.
 //! #[define_varlen]
 //! struct MyMacroStruct {
 //!     age: usize,
@@ -121,7 +128,7 @@
 //! }
 //! # fn example3() {
 //! # let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
-//! #     FixedLen(16), Str::copy_from_str("hello"), Str::copy_from_str("world")));
+//! #     FixedLen(16), Str::copy_from_str("hello"), Array::copy_from_slice(&[1u16, 2])));
 //! # let my_struct: VBox<MyStruct> = VBox::new(MyStructInit(my_tuple));
 //! let s: VBox<MyMacroStruct> = VBox::new(
 //!     my_macro_struct::Init{
@@ -166,102 +173,59 @@
 //! # }
 //! ```
 //! 
-//! # Old
-//! 
-//! As conceived by this library, variable-length types consist of a fixed-length header
-//! (the type `Self`), followed by a variable-length tail which follows `Self` in memory.
-//! The header has sufficient information in it to recover the length of the tail.
-//!
-//! Pointers to variable-length types are thin (one word), rather than wide (two words).
-//! The following table shows the pointer types for variable-length types:
-//!
-//! | Name                   | Fixed-length type `T` | Variable-length type `T`                       |
-//! |------------------------|-----------------------|------------------------------------------------|
-//! | Immutable reference    | `&T`                  | `&T`                                           |
-//! | Mutable reference      | `&mut T`              | [`std::pin::Pin<&mut T>`]                      |
-//! | Owning, non-allocated  | `T`                   | `varlen::owned::Owned<'storage, T>` (sort of)  |
-//! | Owning, allocated      | [`Box<T>`]            | `varlen::boxed::Box<T>`                        |
-//!
-//! Variable-length types must implement `VarLen`, which reports their size (including the tail)
-//! and also specifies how to drop the tail. The primary way to construct variable-length types
-//! is by the `#[define_varlen]` macro, for example:
-//!
-//! ```
-//! use varlen::define_varlen;
-//! #[define_varlen]
-//! struct CoolVarLen {
-//!   #[controls_layout]
-//!   first_len: u8,
-//!
-//!   #[controls_layout]
-//!   mask: u8,
-//!
-//!   #[varlen_array]
-//!   arr0: [u16; *first_len as usize],
-//!
-//!   #[varlen_array]
-//!   arr1: [u32; mask.count_ones() as usize],
-//! }
-//!
-//! # fn main() {}
-//! ```
-//!
-//! This example defines a variable-length type with `first_len` and `mask` in the header, and
-//! `arr0` and `arr1` in the tail.
-//!
-//! If `T` is a variable-length type, we require the invariant that any reference `&T` must have
-//! a valid tail, whose size matches its header. In order to maintain this invariant, you are
-//! restricted in what operations you can do on variable-length types. For automatically defined
-//! variable length types, the following operations are not possible to express in safe code:
-//!  1) Changing what sizes are reported by the header. To prevent this, these fields are only
-//!     immutably accessible in safe code.
-//!  2) Getting access to a `T`. Doing so would violate (1), e.g. by moving the header without
-//!     also moving the tail. Safe code does not give you access to `T`; use `Box<T>` or
-//!    `Owned<'storage, T>` instead.
-//!     2a) `Clone` and `Copy` are never implemented on `T`. They may be implemented on `Owned<T>`
-//!     or `Box<T>` though.
-//!  3) Getting access to a `&mut T`. Doing so would violate (1), e.g. by allowing
-//!     `std::mem::swap`. Safe code only gives you access to `Pin<&mut T>`.
-//!
-//! Because you cannot directly get a `T`, functions like `varlen::Box::new()` or
-//! `Seq::push()` take a different approach than the standard library's `Box::new()` or
-//! `Vec::push()`. Instead of passing the already-constructed object `T`, we pass an "initializer"
-//! object which knows how to write a `T` to a pointer. Initializers typically consist of the
-//! actual value of the header, plus a lambda describing how to populate the tail. The following
-//! example shows constructing a `Box<CoolVarLen>` by an initializer. Additionally, `Box` is itself
-//! an initializer, so the example also shows using `Box` to push onto a `Seq`.
-//!
-//! ```
-//! use varlen::vbox::VBox;
-//! use varlen::array_init::{FillWithDefault, FillSequentially};
-//! use varlen::seq::Seq;
-//! # use varlen::define_varlen;
-//! # #[define_varlen]
-//! # struct CoolVarLen {
-//! #   #[controls_layout]
-//! #   first_len: u8,
-//! #
-//! #   #[controls_layout]
-//! #   mask: u8,
-//! #
-//! #   #[varlen_array]
-//! #   arr0: [u16; *first_len as usize],
-//! #
-//! #   #[varlen_array]
-//! #   arr1: [u32; mask.count_ones() as usize],
-//! # }
-//! # fn main() {
-//! let b: VBox<CoolVarLen> = VBox::new(cool_var_len::Init{
-//!   first_len: 2,
-//!   mask: 0xff,
-//!   arr0: FillWithDefault,
-//!   arr1: FillSequentially(|i| (i as u32) * 3),
-//! });
-//! let mut s: Seq<CoolVarLen> = Seq::new();
-//! s.push(b);
-//! # }
-//! ```
 )]
+//! # Overview of types
+//!
+//! `varlen` provides variable-length versions of various standard-library types and traits.
+//! This table gives the correspondence:
+//!
+//!
+//! | Name                     | Fixed-length type `T` | Variable-length type `T`                      | Notes                                                                                   |
+//! |--------------------------|-----------------------|-----------------------------------------------|-----------------------------------------------------------------------------------------|
+//! | Immutable reference      | `&T`                  | `&T`                                          |                                                                                         |
+//! | Mutable reference        | `&mut T`              | [`Pin<&mut T>`][std::pin::Pin]                | `Pin<>` required for safety, see below                                                  |
+//! | Owning, non-allocated    | `T`                   | [`Owned<'storage, T>`][crate::owned::Owned]   | `Owned<T>` is still a pointer to `T`'s payload                                          |
+//! | Owning, allocated        | [`Box<T>`]            | [`VBox<T>`][crate::vbox::VBox]                |                                                                                         |
+//! | Sequence                 | [`Vec<T>`]            | [`Seq<T>`][crate::seq::Seq]                   | `Seq` has tightly-packed _variable-size_ elements. Random access is somewhat restricted |
+//! | String                   | [`String`]            | [`Str`][crate::str::Str]                      | String payload immediately follows the size, no pointer following                       |
+//! | Array (fixed-size elems) | [`Box<[u16]>`]        | [`Array<u16>`][crate::array::Array]           | Array payload immediately follows the size, no pointer following                        |
+//! | Tuple                    | `(T, U)`              | [`Tup2<T, U>`][crate::tuple::Tup2]            | Field `U` might not be at a statically known offset from start of object                |
+//! | Clone                    | `Clone::clone()`      | [`VClone::vclone()`][crate::VClone::vclone]   |                                                                                         |
+//! | Copy                     | <implicit>            | [`VCopy::vcopy()`][crate::VCopy::vcopy]       |                                                                                         |
+//!
+//!
+//! # Use of `Pin`
+//!
+//! Mutable references to variable-length types use [`Pin<&mut T>`][std::pin::Pin] rather than
+//! `&mut T`. By doing so, we prevent patterns such as calling [`std::mem::swap`] on
+//! variable-length types. Such patterns would be a safety hazard, because the part of the type
+//! that the Rust compiler knows about when calling [`std::mem::swap`] is just the
+//! "fixed-size head" of the type. However, almost all variable-length types additionally have a
+//! "variable-sized tail" that the Rust compiler doesn't know about. Swapping the head but not
+//! the tail could violate a type's invariants, potentially breaking safety.
+//!
+//! If you never write `unsafe` code, you don't need to worry about this issue. The only practical
+//! consequence is that mutable access to a variable-length type is always mediated through
+//! [`Pin<&mut T>`][std::pin::Pin] rather than `&mut T`, and you will have to work with the slightly
+//! more cumbersome `Pin` APIs.
+//!
+//! On the other hand, if you write `unsafe` code, you may have to be aware of the following
+//! invariant. If `T` is a variable-length type, we require that any reference `&T` points to
+//! a "valid" `T`, which we consider to be one which has a fixed-length head
+//! (of size `std::mem::size_of::<T>()`) followed by a variable-length tail, and the head and
+//! tail are "consistent" with each other. Here, "consistent" means that they were produced by
+//! a call to one of the type's [`Initializer`] instances. In `unsafe` code, where you might
+//! have access to a `&mut T` (without a `Pin`), you must avoid code patterns which modify the
+//! head without also correspondingly modifying the tail.
+//!
+//! # Feature flags
+//!
+//! This crate has no *required* dependencies. The following feature flags exist, which can turn
+//! on some dependencies.
+//!
+//! * `bumpalo`. Enables support for allocating an [`Owned<T>`][crate::owned::Owned] in an `bumpalo::Bump` arena. Adds a dependency on `bumpalo`.
+//! * `macro`. Enables procedural macro support, for defining variable-length structs using [`#[define_varlen]`][crate::define_varlen]. Adds a dependency on `syn` and `quote`.
+//!
 
 pub mod array;
 pub mod array_init;
@@ -397,6 +361,17 @@ pub unsafe trait Initializer<T: VarLen> {
 }
 
 /// Presents a fixed-length type `T` as a variable-length type.
+///
+/// Useful for creating tuples consisting of some variable-length types
+/// and some fixed-length types.
+///
+/// # Examples
+///
+/// ```
+/// use varlen::prelude::*;
+/// let b: VBox<FixedLen<u16>> = VBox::new(FixedLen(4));
+/// assert_eq!(b.0, 4);
+/// ```
 pub struct FixedLen<T>(pub T);
 
 pub struct FixedLenLayout<T>(PhantomData<T>);
@@ -437,3 +412,25 @@ unsafe impl<T> VarLen for FixedLen<T> {
 
     unsafe fn drop_tail(self: core::pin::Pin<&mut Self>, _layout: Self::Layout) {}
 }
+
+pub struct FixedLenCloner<'a, T>(&'a T);
+
+impl<'a, T: 'a + Clone> VClone<'a> for FixedLen<T> {
+    type Cloner = FixedLenCloner<'a, T>;
+    fn vclone(&'a self) -> Self::Cloner {
+        FixedLenCloner(&self.0)
+    }
+}
+
+unsafe impl<'a, T: Clone> Initializer<FixedLen<T>> for FixedLenCloner<'a, T> {
+    fn calculate_layout_cautious(&self) -> Option<FixedLenLayout<T>> {
+        Some(FixedLenLayout(PhantomData))
+    }
+
+    unsafe fn initialize(self, dst: NonNull<FixedLen<T>>, _layout: FixedLenLayout<T>) {
+        dst.as_ptr().write(FixedLen(self.0.clone()));
+    }
+}
+
+// Safety: coyable if T is.
+unsafe impl<'a, T: 'a + Copy> VCopy<'a> for FixedLen<T> {}
