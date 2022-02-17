@@ -1,4 +1,14 @@
 #![doc = crate::doc_macro::make_svgbobdoc!(
+//! # `varlen`
+//! Ergonomic variable-length types.
+//!
+//! 1. [Summary](#summary)
+//! 1. [Motivation](#motivation)
+//! 1. [Examples](#examples)
+//! 1. [Overview of types](#overview-of-types)
+//! 1. [Use of Pin](#use-of-pin)
+//! 1. [Feature flags](#feature-flags)
+//! 
 //! # Summary
 //! 
 //! `varlen` defines foundational types and traits for working with variable-length types in Rust.
