@@ -224,7 +224,7 @@
 //! on some dependencies.
 //!
 //! * `bumpalo`. Enables support for allocating an [`Owned<T>`][crate::owned::Owned] in an `bumpalo::Bump` arena. Adds a dependency on `bumpalo`.
-//! * `macro`. Enables procedural macro support, for defining variable-length structs using [`#[define_varlen]`][crate::define_varlen]. Adds a dependency on `syn` and `quote`.
+//! * `macro`. Enables procedural macro support, for defining variable-length structs using [`#[define_varlen]`][crate::define_varlen]. Adds a dependency on `varlen_macro`, `syn` and `quote`.
 //!
 
 pub mod array;
