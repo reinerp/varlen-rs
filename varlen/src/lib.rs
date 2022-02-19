@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+#![warn(rustdoc::missing_doc_code_examples)]
 #![doc = crate::doc_macro::make_svgbobdoc!(
 //! # `varlen`
 //! Ergonomic variable-length types.

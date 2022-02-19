@@ -302,7 +302,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
 /// ```
 /// use varlen::prelude::*;
 /// let arr = VBox::new(Array::copy_from_slice(&[1u8, 2, 3]));
-/// let seq = seq![arr.vclone(), arr.vclone(), vclone()];  // Clones the array
+/// let seq: Seq<_> = seq![arr.vclone(), arr.vclone(), arr.vclone()];  // Clones the array
 /// for a in seq.iter() {
 ///     assert_eq!(&a[..], &[1, 2, 3]);
 /// }
