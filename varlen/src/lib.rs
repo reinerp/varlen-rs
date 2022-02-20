@@ -421,17 +421,90 @@ pub unsafe trait VarLen: Sized {
 /// assert!(iter.next().is_none());
 /// ```
 pub trait VClone<'a>: VarLen {
+    /// An initializer that can produce a clone of an object of type `Self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use varlen::prelude::*;
+    ///
+    /// let s_box: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+    /// let s: &Str = &*s_box;
+    /// let seq: Seq<Str> = seq![s.vclone(), s.vclone(), s.vclone()];
+    /// let mut iter = seq.iter();
+    /// assert_eq!(&iter.next().unwrap()[..], "hello");
+    /// assert_eq!(&iter.next().unwrap()[..], "hello");
+    /// assert_eq!(&iter.next().unwrap()[..], "hello");
+    /// assert!(iter.next().is_none());
+    /// ```
     type Cloner: Initializer<Self>;
+
+    /// Returns an initializer that will clone `self` when run.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use varlen::prelude::*;
+    ///
+    /// let s_box: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+    /// let s: &Str = &*s_box;
+    /// let seq: Seq<Str> = seq![s.vclone(), s.vclone(), s.vclone()];
+    /// let mut iter = seq.iter();
+    /// assert_eq!(&iter.next().unwrap()[..], "hello");
+    /// assert_eq!(&iter.next().unwrap()[..], "hello");
+    /// assert_eq!(&iter.next().unwrap()[..], "hello");
+    /// assert!(iter.next().is_none());
+    /// ```
     fn vclone(&'a self) -> Self::Cloner;
 }
 
-/// Safety: implementor promises that all fields implement VCopy.
+/// Support for shallow byte-wise copy of varlen types.
+/// 
+/// Types that implement this trait can be copied by a bulk copy of the
+/// byte buffer at which the object is stored.
+/// 
+/// # Examples
+/// 
+/// ```
+/// use varlen::prelude::*;
+///
+/// let s1: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+/// let s2: VBox<Str> = VBox::new(s1.vcopy());
+/// ```
+///
+/// # Safety
+/// 
+/// Implementors of this trait must guarantee that this type is safe for
+/// bytewise copy. Usually it is sufficient to guarantee that all fields
+/// implement `VCopy`.
 pub unsafe trait VCopy<'a>: VClone<'a> {
+    /// Returns an initializer that does a bulk byte copy of `self`.
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use varlen::prelude::*;
+    ///
+    /// let s1: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+    /// let s2: VBox<Str> = VBox::new(s1.vcopy());
+    /// ```
     fn vcopy(&'a self) -> VCopier<'a, Self> {
         VCopier(self)
     }
 }
 
+/// An initializer that constructs a bytewise copy of `T`.
+/// 
+/// See [`VCopy::vcopy`].
+///
+/// # Examples
+/// 
+/// ```
+/// use varlen::prelude::*;
+///
+/// let s1: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+/// let s2: VBox<Str> = VBox::new(s1.vcopy());
+/// ```
 pub struct VCopier<'a, T>(&'a T);
 
 // Safety: implementor of `VCopy` promises that initialization via memcpy
@@ -452,12 +525,6 @@ unsafe impl<'a, T: VCopy<'a>> Initializer<T> for VCopier<'a, T> {
         );
     }
 }
-
-// pub trait VClone: VarLen where for<'a> CloneOf<'a, Self>: Initializer<Self> {}
-// pub trait VCopy: VarLen where for<'a> CopyOf<'a, Self>: Initializer<Self> {}
-
-// pub struct CloneOf<'a, T>(pub &'a T);
-// pub struct CopyOf<'a, T>(pub &'a T);
 
 /// A layout of a variable-length object.
 pub trait Layout: Eq {
