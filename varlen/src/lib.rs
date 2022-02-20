@@ -459,12 +459,12 @@ pub trait VClone<'a>: VarLen {
 }
 
 /// Support for shallow byte-wise copy of varlen types.
-/// 
+///
 /// Types that implement this trait can be copied by a bulk copy of the
 /// byte buffer at which the object is stored.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::prelude::*;
 ///
@@ -473,7 +473,7 @@ pub trait VClone<'a>: VarLen {
 /// ```
 ///
 /// # Safety
-/// 
+///
 /// Implementors of this trait must guarantee that this type is safe for
 /// bytewise copy. Usually it is sufficient to guarantee that all fields
 /// implement `VCopy`.
@@ -481,7 +481,7 @@ pub unsafe trait VCopy<'a>: VClone<'a> {
     /// Returns an initializer that does a bulk byte copy of `self`.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use varlen::prelude::*;
     ///
@@ -494,11 +494,11 @@ pub unsafe trait VCopy<'a>: VClone<'a> {
 }
 
 /// An initializer that constructs a bytewise copy of `T`.
-/// 
+///
 /// See [`VCopy::vcopy`].
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use varlen::prelude::*;
 ///
@@ -532,14 +532,109 @@ pub trait Layout: Eq {
     fn size(&self) -> usize;
 }
 
-/// Trait implementor promises:
-///  * 'layout' is correct for the writes in 'initialize'
-///  * after 'initialize', the 'VarLen::layout' matches the 'SizedInitializer::layout'.
+/// A type that knows how to construct a variable-length object.
+///
+/// Construction of a variable-length object proceeds as follows:
+///
+/// 1. The `Initializer` calculates how much memory is required for the object,
+///    returns that information to the caller.
+/// 2. The caller, such as [`VBox`][crate::vbox::VBox] or [`Seq`][crate::seq::Seq],
+///    reserves that much memory for the object.
+/// 3. The `Initializer` populates the reserved memory.
+///
+/// An `Initializer` is responsible for steps (1) and (3) of this protocol. Step (1)
+/// is handled by [`calculate_layout_cautious`], and step (3) is handled by [`initialize`].
+///
+/// Directly defining or using an `Initializer` involves writing `unsafe` code.
+/// You can typically avoid this `unsafe` code by using the standard container types
+/// such as [`VBox`][crate::vbox::VBox] aod [`Seq`][crate::seq::Seq] and the standard
+/// initializers that the tuple/struct/array/string types provide.
+///
+/// # Examples
+///
+/// Full lifecycle of initialization and destruction:
+///
+/// ```
+/// use varlen::prelude::*;
+/// use varlen::Layout as _;
+/// use std::alloc::Layout;
+/// use std::pin::Pin;
+/// use std::ptr::NonNull;
+///
+/// // Make an initializer. This is a cheap pointer-only operation.
+/// let init = Str::copy_from_str("hello world");
+///
+/// // Step 1: calculate memory requirement.
+/// let layout = init.calculate_layout_cautious().unwrap();
+/// let alloc_layout = Layout::from_size_align(layout.size(), Str::<usize>::ALIGN).unwrap();
+/// let mut s: Pin<&mut Str> = unsafe {
+///     // Step 2: allocate memory.
+///     let mem = std::alloc::alloc(alloc_layout);
+///     let mut mem = NonNull::new(mem as *mut Str).unwrap();
+///     // Step 3: populate the memory.
+///     init.initialize(mem, layout);
+///     // Now use the initialized object
+///     Pin::new_unchecked(mem.as_mut())
+/// };
+/// // Read its value
+/// assert_eq!(&s[..], "hello world");
+/// // Eventually delete it
+/// unsafe {
+///     let layout = s.calculate_layout();
+///     let ptr = s.as_mut().get_unchecked_mut() as *mut _ as *mut u8;
+///     s.vdrop(layout);
+///     std::alloc::dealloc(ptr, alloc_layout);
+/// }
+/// ```
+///
+/// # Safety
+///
+/// An implementor of this trait is required to ensure:
+///  * When `self.initialize(dst, layout)` is called with `layout=self.calculate_layout_cautious()`,
+///    the `initialize()` function doesn't write past offset `layout.size()` of `dst`.
+///  * When `initialize(dst, layout)` is called with layout=self.calculate_layout_cautious()`, then
+///    after the `initialize()` function returns the object `T` is "initialized", i.e. it is safe
+///    to use as a `&T` or as a `Pin<&mut T>`.
+///  * The layout returned by `calculate_layout_cautious()` matches the layout returned by
+///    [`VarLen::calculate_layout()`] on the initialized object.
 pub unsafe trait Initializer<T: VarLen> {
+    /// Calculates the layout of the object, returning `None` if any of the calculated sizes
+    /// or offsets would overflow `usize`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use varlen::prelude::*;
+    /// use varlen::Layout as _;
+    ///
+    /// // Succeeds on most sizes:
+    /// let init = SizedInit(4usize, FillWithDefault);
+    /// assert_eq!(
+    ///     Initializer::<Array<u32>>::calculate_layout_cautious(&init)
+    ///     .unwrap().size(),
+    ///     std::mem::size_of::<usize>() + 4 * std::mem::size_of::<u32>());
+    /// // Fails on `usize` overflow:
+    /// let init = SizedInit(usize::MAX, FillWithDefault);
+    /// assert!(
+    ///    Initializer::<Array<u32>>::calculate_layout_cautious(&init)
+    ///    .is_none());
+    /// ```
     fn calculate_layout_cautious(&self) -> Option<T::Layout>;
-    // Safety:
-    //  * must be called with layout from `calculate_layout`
-    //  * `dst` must be writable, with size as specified by `self.calculate_layout().size()`
+
+    /// Populates the destination pointer.
+    ///
+    /// See the [trait documentation][`Initializer`] for details on the initialization protocol.
+    ///
+    /// # Safety
+    ///
+    /// Trait implementor requirements are documented in the [trait documentation][`Initializer`].
+    ///
+    /// Additionally, the function caller must guarantee:
+    ///
+    /// * You must call `initialize` with the layout returned by [`calculate_layout_cautious()`]
+    ///   on the same initializer object.
+    /// * `dst` must be writable, with size as specified by `self.calculate_layout().size()`.
+    #[allow(rustdoc::missing_doc_code_examples)]
     unsafe fn initialize(self, dst: NonNull<T>, layout: T::Layout);
 }
 
