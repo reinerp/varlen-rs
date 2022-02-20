@@ -48,7 +48,7 @@ impl<T> HasUninit for T {
 /// let arr: [u16; 4] = new_array(FillSequentially(|i| (i * 2) as u16));
 /// assert_eq!([0, 2, 4, 6], arr);
 /// ```
-pub fn new_array<const N: usize, T>(init: impl ArrayInitializer<T>) -> [T; N] {
+pub fn new_array<T, const N: usize>(init: impl ArrayInitializer<T>) -> [T; N] {
     let mut data = [HasUninit::UNINIT; N];
     init.initialize(&mut data);
     unsafe {

@@ -93,14 +93,14 @@ mod tests {
         );
     }
 
-    #[define_varlen]
-    pub struct HasNest {
-        #[allow(dead_code)]
-        x: u32,
+    // #[define_varlen]
+    // pub struct HasNest {
+    //     #[allow(dead_code)]
+    //     x: u32,
 
-        #[varlen]
-        nest: T,
-    }
+    //     #[varlen]
+    //     nest: T,
+    // }
 
     const MY_CONSTANT: usize = 4;
     type MyType = u16;

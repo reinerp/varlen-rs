@@ -263,12 +263,54 @@ pub use seq::Seq;
 pub use varlen_macro::define_varlen;
 pub use vbox::VBox;
 
-/// Trait describing variable-length types.
+/// The fundamental trait for variable-length types.
 ///
-/// All variable-length types must have:
-///  * a way to report their own size and alignment
-///    * because of the variable-length
-///  *
+/// This type is analogous to `Sized` for fixed-length types. Provides functionality required
+/// for:
+/// * moving an object: need to know its [layout][`VarLen::calculate_layout`] and
+///   [alignment][`VarLen::ALIGN`].
+/// * dropping an object: need to know how to drop its fixed-length header (which the Rust
+///   compiler already tracks for all types via [`Drop`]), and also need know how to
+///   drop its variable-length tail, which we track via [`drop_tail`][`VarLen::drop_tail`].
+///
+/// Most users of this trait are not expected to implement this trait or call its functions
+/// directly. Instead, you will typically use an existing implementation, such as a
+/// [tuple type][`crate::tuple`] or a [`#[define_varlen]`][`crate::define_varlen`] struct.
+///
+/// # Examples
+///
+/// Generic function on variable-length type:
+///
+/// ```
+/// use varlen::prelude::*;
+/// fn push2<T: VarLen>(x: VBox<T>, y: VBox<T>, seq: &mut Seq<T>) {
+///     seq.push(x);
+///     seq.push(y);
+/// }
+/// let mut s = Seq::new();
+/// push2(
+///     VBox::new(Str::copy_from_str("hello")),
+///     VBox::new(Str::copy_from_str("world")),
+///     &mut s);
+/// let mut iter = s.iter();
+/// assert_eq!(&iter.next().unwrap()[..], "hello");
+/// assert_eq!(&iter.next().unwrap()[..], "world");
+/// assert!(iter.next().is_none());
+/// ```
+///
+/// # Safety
+///
+/// To safely implement this trait, you must guarantee that the reported layout of your type
+/// is correct. Specifically:
+/// * [`VarLen::ALIGN`] must be a power of 2.
+/// * the alignment reported by [`VarLen::ALIGN`] is large enough to support the alignment
+///   requirements of all the fields within this type. An implication of this is that this
+///   alignment must be at least large as `std::mem::align_of::<Self>()`, which is the alignment
+///   requirement of the fixed-length header.
+/// * the layout reported by [`VarLen::calculate_layout()`] reports the correct size of
+///   the object, including its variable-length tail
+///
+/// The layout of an existing object must not change its size.
 pub unsafe trait VarLen: Sized {
     /// This type's internal dynamic calculations of where its tail fields are.
     ///
@@ -277,27 +319,89 @@ pub unsafe trait VarLen: Sized {
     type Layout: Layout;
 
     /// Calculates the layout of the internal fields of this object.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use varlen::prelude::*;
+    /// use varlen::Layout;
+    /// let s = VBox::new(Str::copy_from_str("hello"));
+    /// assert_eq!(s.calculate_layout().size(), std::mem::size_of::<usize>() + 5);
+    /// ```
     fn calculate_layout(&self) -> Self::Layout;
 
-    /// Alignment of this type.
+    /// Alignment of this type, including its fixed-length header.
     ///
-    /// To be safe, trait implementor must guarantee:
+    /// # Examples
+    ///
+    /// ```
+    /// use varlen::prelude::*;
+    /// type T = Array<u64, u16>;
+    /// // Fixed-length header is just the u16 length field:
+    /// assert_eq!(std::mem::align_of::<T>(), std::mem::align_of::<u16>());
+    /// // Variable-length tail includes the u64 array elements too:
+    /// assert_eq!(T::ALIGN, std::mem::align_of::<u64>());
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// Implementors of this trait must guarantee:
     /// * `ALIGN` is a power of 2.
     /// * `ALIGN` is at least equal to `core::mem::align_of::<Self>()`.
     const ALIGN: usize;
 
-    /// If true, `drop_tail()` is a noop.
-    const NEEDS_DROP_TAIL: bool;
-
-    /// Drops the tail of `self`. The "tail" is the part of the type that Rust's automatic
-    /// `Drop` logic _doesn't_ take care of.
+    /// Drops `self`.
     ///
-    /// Safety requirements:
-    ///  * must be called at most once on `self`
-    ///  * caller must not access tail fields after this call
-    ///  * layout must have been returned by `calculate_layout()` on
+    /// Rust's automatic [`Drop`] logic only accounts for the "head" (fixed-length) part
+    /// of a type, and isn't aware of the presence of a variable-length "tail". On `VarLen`
+    /// types, you should use `vdrop` instead of [`std::mem::drop`].
+    ///
+    /// # See also
+    ///
+    /// Containers types such as [`VBox`][crate::vbox::VBox], [`Owned`][crate::owned::Owned],
+    /// and [`Seq`][crate::seq::Seq] take care of dropping their contents. You typically do
+    /// not need to call [`vdrop`] directly.
+    ///
+    /// # Examples
+    ///
+    /// Drop on a [`VBox`]'s memory allocation.
+    ///
+    /// ```
+    /// use varlen::prelude::*;
+    /// use varlen::Layout as _;
+    /// use std::pin::Pin;
+    /// use std::alloc::Layout;
+    /// type Ty = Tup2<FixedLen<String>, Str>;
+    /// let v: VBox<Ty> =
+    ///     VBox::new(tup2::Init(
+    ///         FixedLen("hello".to_string()),
+    ///         Str::copy_from_str("world"),
+    ///     ));
+    /// unsafe {
+    ///     let p = v.into_raw();
+    ///     let pp: Pin<&mut Ty> = Pin::new_unchecked(&mut *p);
+    ///     let layout = pp.calculate_layout();
+    ///     let size = layout.size();
+    ///     pp.vdrop(layout);
+    ///     std::alloc::dealloc(
+    ///         p as *mut u8,
+    ///         Layout::from_size_align(size, Ty::ALIGN).unwrap());
+    /// }
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure:
+    ///  * `vdrop` is called at most once on `self`
+    ///  * `layout` must have been returned by `calculate_layout()` on
     ///    this object or `calculate_layout_cautious()` on its initializer.
-    unsafe fn drop_tail(self: core::pin::Pin<&mut Self>, layout: Self::Layout);
+    unsafe fn vdrop(self: core::pin::Pin<&mut Self>, layout: Self::Layout);
+
+    /// If false, [`vdrop()`] is a noop, and may be skipped without changing behavior.
+    ///
+    /// This is the equvialent of [`std::mem::needs_drop()`] that accounts for the tail of
+    /// the type too, not just the head.
+    const NEEDS_VDROP: bool;
 }
 
 /// Support for cloning variable-length types.
@@ -420,9 +524,13 @@ unsafe impl<T> VarLen for FixedLen<T> {
 
     const ALIGN: usize = core::mem::align_of::<T>();
 
-    const NEEDS_DROP_TAIL: bool = false;
+    const NEEDS_VDROP: bool = true;
 
-    unsafe fn drop_tail(self: core::pin::Pin<&mut Self>, _layout: Self::Layout) {}
+    unsafe fn vdrop(self: core::pin::Pin<&mut Self>, _layout: Self::Layout) {
+        // Safety: drop_in_place is called only once, because Self::vdrop() is
+        // called only once.
+        core::ptr::drop_in_place(self.get_unchecked_mut() as *mut Self)
+    }
 }
 
 pub struct FixedLenCloner<'a, T>(&'a T);

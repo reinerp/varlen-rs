@@ -199,11 +199,14 @@ macro_rules! define_varlen_newtype {
             }
 
             const ALIGN: usize = <$inner as $crate::VarLen>::ALIGN;
-            const NEEDS_DROP_TAIL: bool = <$inner as $crate::VarLen>::NEEDS_DROP_TAIL;
+            const NEEDS_VDROP: bool = <$inner as $crate::VarLen>::NEEDS_VDROP;
 
             #[inline(always)]
-            unsafe fn drop_tail(self: ::core::pin::Pin<&mut Self>, layout: Self::Layout) {
-                <$inner as $crate::VarLen>::drop_tail(self.map_unchecked_mut(|outer| &mut outer.0), layout);
+            unsafe fn vdrop(self: ::core::pin::Pin<&mut Self>, layout: Self::Layout) {
+                if !Self::NEEDS_VDROP {
+                    return;
+                }
+                <$inner as $crate::VarLen>::vdrop(self.map_unchecked_mut(|outer| &mut outer.0), layout);
             }
         }
 

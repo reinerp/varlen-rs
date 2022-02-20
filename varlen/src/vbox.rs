@@ -147,18 +147,10 @@ impl<T: VarLen> VBox<T> {
 impl<T: VarLen> Drop for VBox<T> {
     fn drop(&mut self) {
         unsafe {
-            // Careful sequencing of drop:
-            //  1. Read the layout, before we drop it.
-            //  2. Drop the header. Needs to happen before dropping the tail, because there might
-            //     be a custom Drop on the header that reads the tail.
-            //  3. Drop the tail. Uses the values we read from the header in step 1.
-            //  4. Deallocate.
             let layout = T::calculate_layout(&*self);
             let alloc_layout = alloc::Layout::from_size_align_unchecked(layout.size(), T::ALIGN);
-            let p = self.0.as_ptr();
-            core::ptr::drop_in_place(p);
-            T::drop_tail(self.as_mut(), layout);
-            std::alloc::dealloc(p as *mut u8, alloc_layout);
+            T::vdrop(self.as_mut(), layout);
+            std::alloc::dealloc(self.0.as_ptr() as *mut u8, alloc_layout);
         }
     }
 }
@@ -245,5 +237,19 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
 impl<T: for<'a> VClone<'a>> Clone for VBox<T> {
     fn clone(&self) -> Self {
         VBox::new(self.vclone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn vdrop() {
+        use crate::prelude::*;
+        type Ty = Tup2<FixedLen<String>, Str>;
+        let v: VBox<Ty> = VBox::new(tup2::Init(
+            FixedLen("hello".to_string()),
+            Str::copy_from_str("world"),
+        ));
+        drop(v);
     }
 }

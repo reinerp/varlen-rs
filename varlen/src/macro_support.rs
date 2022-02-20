@@ -148,11 +148,9 @@ pub unsafe fn init_field<Field: VarLen, Init: Initializer<Field>>(
 
 /// Safety: `p+offset` must have a valid `Field` which matches `layout`.
 #[inline(always)]
-pub unsafe fn drop_field<Field: VarLen>(p: *mut u8, offset: usize, layout: Field::Layout) {
-    let mut p = core::pin::Pin::new_unchecked(&mut *(p.wrapping_add(offset) as *mut Field));
-    // Drop the field before its tail, because the field's destructor might reference its tail.
-    core::ptr::drop_in_place(p.as_mut().get_unchecked_mut() as *mut Field);
-    Field::drop_tail(p, layout);
+pub unsafe fn vdrop_field<Field: VarLen>(p: *mut u8, offset: usize, layout: Field::Layout) {
+    let p = core::pin::Pin::new_unchecked(&mut *(p.wrapping_add(offset) as *mut Field));
+    Field::vdrop(p, layout);
 }
 
 #[inline(always)]
@@ -176,4 +174,9 @@ pub const fn array_max(arr: &[usize]) -> usize {
         i += 1;
     }
     r
+}
+
+#[track_caller]
+pub fn invalid_drop_call() -> ! {
+    panic!("Called drop on a VarLen type; should have used vdrop instead")
 }

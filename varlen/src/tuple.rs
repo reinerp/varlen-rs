@@ -171,8 +171,8 @@ macro_rules! define_tuple {
             const ALIGN: usize = crate::macro_support::array_max(&[
                 $($arg::ALIGN),*
             ]);
-            const NEEDS_DROP_TAIL: bool = $(
-                $arg::NEEDS_DROP_TAIL || core::mem::needs_drop::<$arg>() ||
+            const NEEDS_VDROP: bool = $(
+                $arg::NEEDS_VDROP ||
             )* false;
 
             fn calculate_layout(&self) -> $mod::Layout<$($arg),*> {
@@ -186,10 +186,13 @@ macro_rules! define_tuple {
                 }
             }
 
-            unsafe fn drop_tail(self: Pin<&mut Self>, layout: $mod::Layout<$($arg),*>) {
+            unsafe fn vdrop(self: Pin<&mut Self>, layout: $mod::Layout<$($arg),*>) {
+                if !Self::NEEDS_VDROP {
+                    return;
+                }
                 let p = self.get_unchecked_mut() as *mut _ as *mut u8;
                 $(
-                    crate::macro_support::drop_field::<$arg>(p, layout.$offset, layout.$layout);
+                    crate::macro_support::vdrop_field::<$arg>(p, layout.$offset, layout.$layout);
                 )*
             }
         }
@@ -244,6 +247,12 @@ macro_rules! define_tuple {
         }
 
         unsafe impl<'a, $($arg: VCopy<'a>),*> VCopy<'a> for $name<$($arg),*> { }
+
+        impl<$($arg),*> Drop for $name<$($arg),*> {
+            fn drop(&mut self) {
+                crate::macro_support::invalid_drop_call()
+            }
+        }
     }
 }
 

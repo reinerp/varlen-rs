@@ -88,9 +88,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 layout_ty: varlen_layout_ty,
                 cat_field_fast: varlen_cat_field_fast,
                 cat_field_cautious: varlen_cat_field_cautious,
-                drop_field: varlen_drop_field,
                 align_of_field: varlen_align_of_field,
-                needs_drop_tail: varlen_needs_drop_tail,
             },
         all_fields:
             AllFields {
@@ -109,6 +107,8 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 mut_layout_ty: all_mut_layout_ty,
                 ref_field: all_ref_field,
                 mut_field: all_mut_field,
+                drop_field: all_drop_field,
+                needs_vdrop: all_needs_vdrop,
             },
     } = parse_fields(fields, &mod_name)?;
 
@@ -197,6 +197,12 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             )*
         }
 
+        impl ::core::ops::Drop for #tyname {
+            fn drop(&mut self) {
+                ::varlen::macro_support::invalid_drop_call()
+            }
+        }
+
         unsafe impl ::varlen::VarLen for #tyname {
             type Layout = #mod_name::VarLenLayout;
 
@@ -229,16 +235,17 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 ]
             );
 
-            const NEEDS_DROP_TAIL: bool =
+            const NEEDS_VDROP: bool =
                 #(
-                    #varlen_needs_drop_tail ||
+                    #all_needs_vdrop ||
                 )*
                 false;
 
-            unsafe fn drop_tail(self: ::core::pin::Pin<&mut Self>, layout: #mod_name::VarLenLayout) {
-                let p = self.get_unchecked_mut() as *mut Self as *mut u8;
+            unsafe fn vdrop(self: ::core::pin::Pin<&mut Self>, layout: #mod_name::VarLenLayout) {
+                let p_typed = self.get_unchecked_mut() as *mut Self;
+                let p = p_typed as *mut u8;
                 #(
-                    #varlen_drop_field
+                    #all_drop_field
                 )*
             }
         }
@@ -498,12 +505,8 @@ struct FieldMarkers {
     cat_field_cautious: Vec<TokenStream>,
     /// calls 'cat_field_fast' with 'size: usize', returning 'Option<(usize, usize, field::Layout)>'
     cat_field_fast: Vec<TokenStream>,
-    /// calls the drop_tail function on this field
-    drop_field: Vec<TokenStream>,
     /// Gets the required alignment of this field
     align_of_field: Vec<TokenStream>,
-    /// Does this field need drop_tail?
-    needs_drop_tail: Vec<TokenStream>,
 }
 
 impl FieldMarkers {
@@ -516,9 +519,7 @@ impl FieldMarkers {
             layout_ty: Vec::new(),
             cat_field_cautious: Vec::new(),
             cat_field_fast: Vec::new(),
-            drop_field: Vec::new(),
             align_of_field: Vec::new(),
-            needs_drop_tail: Vec::new(),
         }
     }
 }
@@ -543,6 +544,10 @@ struct AllFields {
     ref_field: Vec<TokenStream>,
     /// creates a mutable reference to this field, given that '&mut self, layout: Layout' is in scope
     mut_field: Vec<TokenStream>,
+    /// calls the drop or vdrop function on this field
+    drop_field: Vec<TokenStream>,
+    /// Does this field need vdrop?
+    needs_vdrop: Vec<TokenStream>,
 }
 
 impl AllFields {
@@ -557,6 +562,8 @@ impl AllFields {
             init_field: Vec::new(),
             ref_field: Vec::new(),
             mut_field: Vec::new(),
+            drop_field: Vec::new(),
+            needs_vdrop: Vec::new(),
         }
     }
 }
@@ -619,6 +626,12 @@ impl FieldGroups {
         self.all_fields
             .mut_field
             .push(quote_spanned! { span => &mut mut_ref.#ident });
+        self.all_fields.drop_field.push(quote_spanned! {span =>
+            ::core::ptr::drop_in_place(::core::ptr::addr_of_mut!((*p_typed).#ident));
+        });
+        self.all_fields.needs_vdrop.push(quote_spanned! {span =>
+            ::core::mem::needs_drop::<#ty>()
+        });
         Ok(())
     }
 
@@ -652,6 +665,12 @@ impl FieldGroups {
         self.all_fields
             .mut_field
             .push(quote_spanned! { span => &mut mut_ref.#ident });
+        self.all_fields.drop_field.push(quote_spanned! {span =>
+            ::core::ptr::drop_in_place(::core::ptr::addr_of_mut!((*p_typed).#ident));
+        });
+        self.all_fields.needs_vdrop.push(quote_spanned! {span =>
+            ::core::mem::needs_drop::<#ty>()
+        });
         Ok(())
     }
 
@@ -682,18 +701,10 @@ impl FieldGroups {
             .push(quote_spanned! { span =>
                 ::varlen::macro_support::cat_field_fast::<#ty, _>(self, size)
             });
-        self.varlen_fields.drop_field.push(quote_spanned! { span =>
-            ::varlen::macro_support::drop_field::<#ty>(p, layout.#ident, layout.#layout_ident);
-        });
         self.varlen_fields
             .align_of_field
             .push(quote_spanned! { span =>
                 <#ty as ::varlen::VarLen>::ALIGN
-            });
-        self.varlen_fields
-            .needs_drop_tail
-            .push(quote_spanned! { span =>
-                (<#ty as ::varlen::VarLen>::NEEDS_DROP_TAIL || ::core::mem::needs_drop::<#ty>())
             });
 
         self.all_fields.meta.push(meta);
@@ -720,6 +731,12 @@ impl FieldGroups {
         });
         self.all_fields.mut_field.push(quote_spanned! { span =>
             ::varlen::macro_support::mut_field(mut_ptr, layout.#ident)
+        });
+        self.all_fields.drop_field.push(quote_spanned! { span =>
+            ::varlen::macro_support::vdrop_field::<#ty>(p, layout.#ident, layout.#layout_ident);
+        });
+        self.all_fields.needs_vdrop.push(quote_spanned! { span =>
+            <#ty as ::varlen::VarLen>::NEEDS_VDROP
         });
         Ok(())
     }
@@ -772,18 +789,10 @@ impl FieldGroups {
                 ::varlen::macro_support::cat_array_field_fast::<#elem_ty>(
                     #mod_name::lengths::#len_ident(lengths), size)
             });
-        self.varlen_fields.drop_field.push(quote_spanned! { span =>
-            ::varlen::macro_support::drop_array::<#elem_ty>(p, layout.#ident, layout.#len_ident);
-        });
         self.varlen_fields
             .align_of_field
             .push(quote_spanned! { span =>
                 ::core::mem::align_of::<#elem_ty>()
-            });
-        self.varlen_fields
-            .needs_drop_tail
-            .push(quote_spanned! { span =>
-                ::core::mem::needs_drop::<#elem_ty>()
             });
 
         self.all_fields.meta.push(meta);
@@ -810,6 +819,12 @@ impl FieldGroups {
         });
         self.all_fields.mut_field.push(quote_spanned! { span =>
             ::varlen::macro_support::mut_array(mut_ptr, layout.#ident, layout.#len_ident)
+        });
+        self.all_fields.drop_field.push(quote_spanned! { span =>
+            ::varlen::macro_support::drop_array::<#elem_ty>(p, layout.#ident, layout.#len_ident);
+        });
+        self.all_fields.needs_vdrop.push(quote_spanned! { span =>
+            ::core::mem::needs_drop::<#elem_ty>()
         });
         Ok(())
     }

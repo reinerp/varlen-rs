@@ -1334,7 +1334,7 @@ impl<'a, T: VarLen> ExactSizeIterator for OwnedElems<'a, T> {
 
 impl<'a, T: VarLen> Drop for OwnedElems<'a, T> {
     fn drop(&mut self) {
-        if core::mem::needs_drop::<T>() || T::NEEDS_DROP_TAIL {
+        if core::mem::needs_drop::<T>() || T::NEEDS_VDROP {
             while let Some(t) = self.next() {
                 drop(t);
             }

@@ -1,3 +1,19 @@
+//! Single module with almost all `varlen` exports
+//!
+//! # Examples
+//!
+//! Import all into current scope:
+//!
+//! ```
+//! use varlen::prelude::*;
+//! ```
+//!
+//! Import all, named:
+//!
+//! ```
+//! use varlen::prelude as v;
+//! ```
+
 pub use crate::array::{Array, ArrayLen, SizedInit};
 pub use crate::array_init::{
     new_array, ArrayInitializer, CloneFrom, CopyFrom, FillSequentially, FillWithDefault,

@@ -199,16 +199,9 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
 impl<T: VarLen> Drop for Owned<'_, T> {
     fn drop(&mut self) {
         unsafe {
-            // Careful sequencing of drop:
-            //  1. Read the layout.
-            //  2. Drop the header. Needs to happen before dropping the tail, because there might
-            //     be a custom Drop on the header that reads the tail.
-            //  3. Drop the tail. Uses the layout we read in step 1.
+            // Safety: vdrop is called only once, because Self::drop() is called only once.
             let layout = T::calculate_layout(&*self);
-            // let drop_tail_fn = self.as_mut().prepare_drop_tail();
-            let p = self.0.as_ptr();
-            core::ptr::drop_in_place(p);
-            T::drop_tail(self.as_mut(), layout);
+            T::vdrop(self.as_mut(), layout);
         }
     }
 }

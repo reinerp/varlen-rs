@@ -148,10 +148,10 @@ unsafe impl<T, Len: ArrayLen> VarLen for Array<T, Len> {
         core::mem::align_of::<Self>(),
         core::mem::align_of::<T>(),
     ]);
-    const NEEDS_DROP_TAIL: bool = core::mem::needs_drop::<T>();
+    const NEEDS_VDROP: bool = core::mem::needs_drop::<T>();
 
     #[inline(always)]
-    unsafe fn drop_tail(self: core::pin::Pin<&mut Self>, layout: Self::Layout) {
+    unsafe fn vdrop(self: core::pin::Pin<&mut Self>, layout: Self::Layout) {
         crate::macro_support::drop_array::<T>(
             self.get_unchecked_mut() as *mut _ as *mut u8,
             layout.array_offset,
