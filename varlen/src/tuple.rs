@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-#![warn(rustdoc::missing_doc_code_examples)]
 #![doc = crate::doc_macro::make_svgbobdoc!(
 //! Tuples of variable length types, potentially mixed with fixed-length types.
 //! 

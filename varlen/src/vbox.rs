@@ -1,6 +1,3 @@
-#![warn(missing_docs)]
-#![warn(rustdoc::missing_doc_code_examples)]
-
 //! Equivalent of [`Box<T>`] for variable-length types.
 //!
 //! # Examples

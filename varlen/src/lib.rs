@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-#![warn(rustdoc::missing_doc_code_examples)]
 #![doc = crate::doc_macro::make_svgbobdoc!(
 //! # `varlen`
 //! Ergonomic variable-length types.
@@ -269,9 +267,9 @@ pub use vbox::VBox;
 /// for:
 /// * moving an object: need to know its [layout][`VarLen::calculate_layout`] and
 ///   [alignment][`VarLen::ALIGN`].
-/// * dropping an object: need to know how to drop its fixed-length header (which the Rust
-///   compiler already tracks for all types via [`Drop`]), and also need know how to
-///   drop its variable-length tail, which we track via [`drop_tail`][`VarLen::drop_tail`].
+/// * dropping an object: the Rust compiler's tracking of [`Drop`] is insufficient for
+///   variable-length types, since we need to track the variable-length tail too. Instead,
+///   we use [`vdrop`][`VarLen::vdrop`].
 ///
 /// Most users of this trait are not expected to implement this trait or call its functions
 /// directly. Instead, you will typically use an existing implementation, such as a
@@ -360,7 +358,7 @@ pub unsafe trait VarLen: Sized {
     ///
     /// Containers types such as [`VBox`][crate::vbox::VBox], [`Owned`][crate::owned::Owned],
     /// and [`Seq`][crate::seq::Seq] take care of dropping their contents. You typically do
-    /// not need to call [`vdrop`] directly.
+    /// not need to call [`vdrop`][`VarLen::vdrop`] directly.
     ///
     /// # Examples
     ///
@@ -397,7 +395,8 @@ pub unsafe trait VarLen: Sized {
     ///    this object or `calculate_layout_cautious()` on its initializer.
     unsafe fn vdrop(self: core::pin::Pin<&mut Self>, layout: Self::Layout);
 
-    /// If false, [`vdrop()`] is a noop, and may be skipped without changing behavior.
+    /// If false, [`vdrop()`][`VarLen::vdrop`] is a noop, and may be skipped without changing
+    /// behavior.
     ///
     /// This is the equvialent of [`std::mem::needs_drop()`] that accounts for the tail of
     /// the type too, not just the head.
@@ -543,7 +542,8 @@ pub trait Layout: Eq {
 /// 3. The `Initializer` populates the reserved memory.
 ///
 /// An `Initializer` is responsible for steps (1) and (3) of this protocol. Step (1)
-/// is handled by [`calculate_layout_cautious`], and step (3) is handled by [`initialize`].
+/// is handled by [`calculate_layout_cautious`][`Initializer::calculate_layout_cautious`],
+/// and step (3) is handled by [`initialize`][`Initializer::initialize`].
 ///
 /// Directly defining or using an `Initializer` involves writing `unsafe` code.
 /// You can typically avoid this `unsafe` code by using the standard container types
@@ -631,7 +631,8 @@ pub unsafe trait Initializer<T: VarLen> {
     ///
     /// Additionally, the function caller must guarantee:
     ///
-    /// * You must call `initialize` with the layout returned by [`calculate_layout_cautious()`]
+    /// * You must call `initialize` with the layout returned by
+    ///   [`calculate_layout_cautious()`][`Initializer::calculate_layout_cautious`]
     ///   on the same initializer object.
     /// * `dst` must be writable, with size as specified by `self.calculate_layout().size()`.
     #[allow(rustdoc::missing_doc_code_examples)]

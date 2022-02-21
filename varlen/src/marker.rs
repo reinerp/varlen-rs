@@ -1,4 +1,3 @@
-#![warn(missing_docs)]
 #![allow(rustdoc::missing_doc_code_examples)]
 //! Marker types for variable-length fields of structs.
 

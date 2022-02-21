@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-#![warn(rustdoc::missing_doc_code_examples)]
 //! A pointer to `T` that calls its destructor but not its deallocator when dropped.
 //!
 //! # Examples

@@ -1,6 +1,3 @@
-#![warn(missing_docs)]
-#![warn(rustdoc::missing_doc_code_examples)]
-
 //! Macros for defining newtype wrappers around variable-length types.
 //!
 //! # Examples

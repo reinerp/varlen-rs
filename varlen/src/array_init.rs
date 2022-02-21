@@ -1,6 +1,3 @@
-#![warn(missing_docs)]
-#![warn(rustdoc::missing_doc_code_examples)]
-
 //! An [`ArrayInitializer<T>`] is an object that knows how to initialize the memory for a `[T]`.
 //! It is useful for initializing `[T; N]` or (of more relevance for this crate) initializing
 //! a `varlen::array::Array<T>`.
