@@ -9,6 +9,132 @@ use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{Attribute, Data, DeriveInput, Field, Fields, Ident, Type, Visibility};
 
+/// Macro for defining variable-length structs.
+/// 
+/// # Examples
+/// 
+/// A struct with multiple variable-length fields, specified by `#[varlen]`:
+///
+/// ```
+/// use varlen::prelude::*;
+/// #[define_varlen]
+/// struct Person {
+///     age: usize,
+///     #[varlen]
+///     name: Str,
+///     #[varlen]
+///     email: Str,
+/// }
+/// # fn main() {
+/// let mut p: VBox<Person> = VBox::new(
+///     person::Init{
+///         age: 16,
+///         name: Str::copy_from_str("Harry Potter"),
+///         email: Str::copy_from_str("harry.potter@example.com"),
+///     }
+/// );
+/// assert_eq!(p.age, 16);
+/// assert_eq!(&p.refs().name[..], "Harry Potter");
+/// p.as_mut().muts().name.mut_slice().make_ascii_uppercase();
+/// assert_eq!(&p.refs().name[..], "HARRY POTTER");
+/// assert_eq!(&p.refs().email[..], "harry.potter@example.com");
+/// # }
+/// ```
+/// 
+/// A struct with variable-length arrays. The arrays are annotated with
+/// `#[varlen_array]`. You may directly specify the array lengths as 
+/// any `const`-evaluatable expression that references the fields 
+/// annotated with `#[controls_layout]`:
+/// 
+/// ```
+/// use varlen::prelude::*;
+/// #[define_varlen]
+/// struct MultipleArrays {
+///     #[controls_layout]
+///     len: usize,
+/// 
+///     #[varlen_array]
+///     array1: [u16; *len],
+/// 
+///     #[varlen_array]
+///     array2: [u8; *len],
+/// 
+///     #[varlen_array]
+///     half_array: [u16; (*len) / 2],
+/// }
+/// # fn main() {
+/// let base_array = vec![1, 3, 9, 27];
+/// let a: VBox<MultipleArrays> = VBox::new(multiple_arrays::Init{
+///     len: base_array.len(),
+///     array1: FillSequentially(|i| base_array[i]),
+///     array2: FillSequentially(|i| base_array[base_array.len() - 1 - i] as u8),
+///     half_array: FillSequentially(|i| base_array[i * 2]),
+/// });
+/// assert_eq!(a.refs().array1, &[1, 3, 9, 27]);
+/// assert_eq!(a.refs().array2, &[27, 9, 3, 1]);
+/// assert_eq!(a.refs().half_array, &[1, 9]);
+/// # }
+/// ```
+/// 
+/// # Attributes
+/// 
+/// The following attributes are available on fields:
+/// 
+/// * `#[varlen]` - use this for a field type which implements `VarLen`
+/// * `#[varlen_array]` - use this for an array-typed field. The length
+///    of the array may refer to fields annotated with 
+///    `#[controls_layout]`, and must be a `const`-evaluatable expression
+/// * `#[controls_layout]` - this marks a field as usable to specify the
+///   length of a `#[varlen_array]` field. It also removes mutable access
+///   to the field. Mutable access risks causing memory unsafety, in which
+///   the length of the array is recorded incorrectly in memory.
+/// 
+/// # Generated API
+/// 
+/// See crate `varlen_generated` for an example of the generated code.
+/// 
+/// For a struct `MyType`, the following is generated:
+/// 
+/// * A type `MyType`, with variable-length fields replaced with
+///   marker types `varlen::marker::FieldMarker` and `varlen::marker::ArrayMarker`
+/// * A module `my_type` (the snake-case version of the struct name), containing:
+///   * a type `VarLenLayout` which specifies the layout of `MyType`
+///   * a type `Refs<'a>` consisting of immutable references, with lifetime `'a`
+///   * a type `Muts<'a>` consisting of mutable references, with lifetime `'a`
+///   * a type `Init<...>` which implements `varlen::Initializer<MyType>`
+///   * a type `LayoutControllers`, which consists of the fields annotated `#[controls_layout]`
+/// * Various member functions on `MyType`, for immutable and mutable access.
+/// * Trait implementations for `MyType`:
+///   * `VarLen` for `MyType`
+///   * `Drop` for `MyType`, which unconditionally panics.
+/// 
+/// # Memory layout
+/// 
+/// The object is laid out in memory with the fixed-length fields first. These are
+/// the fields which are not annotated with `#[varlen]` or `#[varlen_array]`. The
+/// fixed-length fields are laid out in whatever order is chosen by the Rust compiler.
+/// 
+/// The variable-length fields always follow the fixed-length fields in memory. The
+/// variable-length fields are always laid out in the order specified in the struct
+/// definition. Padding is inserted between variable-length fields as needed to 
+/// meet the alignment requirements of each field.
+/// 
+/// Padding before variable-length fields costs both memory and time. To minimize 
+/// padding effects, as much as possible try to use the same alignment for all
+/// fields. Where this is not possible, try to order your fields from most-aligned
+/// to least-aligned: when a less-aligned field follows a more-aligned field, there
+/// are zero padding bytes, and the padding computation can be entirely optimized
+/// away.
+/// 
+/// Access to a variable-length field requires running some code at runtime that
+/// skips over all previous variable-length fields in the struct. To minimize time
+/// spent on skipping over these fields, you can:
+/// 
+/// * Store the result of `refs()` in a local variable, and reuse that variable
+///   multiple times. This calculates the beginning of all variable-length fields
+///   once, and then reuses that calculation.
+/// * Sort the variable-length fields of the struct so that the 
+///   most-frequently-used fields come first.
 #[proc_macro_attribute]
 pub fn define_varlen(
     attrs: proc_macro::TokenStream,
