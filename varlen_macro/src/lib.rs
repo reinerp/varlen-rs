@@ -91,7 +91,7 @@ use syn::{Attribute, Data, DeriveInput, Field, Fields, Ident, Type, Visibility};
 ///
 /// # Generated API
 ///
-/// See crate `varlen_generated` for an example of the generated code.
+/// See crate [`varlen_generated`](https://docs.rs/varlen_example) for an example of the generated code.
 ///
 /// For a struct `MyType`, the following is generated:
 ///

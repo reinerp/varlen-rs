@@ -1,4 +1,4 @@
-// #![doc = crate::doc_macro::make_svgbobdoc!(
+#![doc = crate::doc_macro::make_svgbobdoc!(
 //! # `varlen`
 //! Ergonomic variable-length types.
 //!
@@ -189,7 +189,7 @@
 //! # }
 //! ```
 //! 
-// )]
+)]
 //! # Overview of types
 //!
 //! `varlen` provides variable-length versions of various standard-library types and traits.
