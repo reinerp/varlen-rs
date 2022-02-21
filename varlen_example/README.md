@@ -2,4 +2,4 @@
 
 Browse the documentation to see the generated API from `#[define_varlen]`.
 
-For real use cases, don't use this crate directly. Use [`varlen` crate](https://crates.io/varlen) instead.
+For real use cases, don't use this crate directly. Use [`varlen` crate](https://crates.io/crates/varlen) instead.
