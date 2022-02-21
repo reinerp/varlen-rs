@@ -126,6 +126,9 @@
 //! 
 //! // Define a variable-length struct via a procedural macro, if the "macro"
 //! // crate feature is enabled.
+//! # #[cfg(feature = "macro")]
+//! # mod using_macro {
+//! # use super::*;
 //! #[define_varlen]
 //! struct MyMacroStruct {
 //!     age: usize,
@@ -136,7 +139,7 @@
 //!     #[varlen]
 //!     child: MyStruct,
 //! }
-//! # fn example3() {
+//! # pub fn example3() {
 //! # let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
 //! #     FixedLen(16), Str::copy_from_str("hello"), Array::copy_from_slice(&[1u16, 2])));
 //! # let my_struct: VBox<MyStruct> = VBox::new(MyStructInit(my_tuple));
@@ -165,7 +168,7 @@
 //!     #[varlen_array]
 //!     half_array: [u16; (*len) / 2],
 //! }
-//! # fn example4() {
+//! # pub fn example4() {
 //! let base_array = vec![0u16, 64000, 13, 105];
 //! let a: VBox<MultipleArrays> = VBox::new(multiple_arrays::Init{
 //!     len: base_array.len(),
@@ -174,12 +177,15 @@
 //!     half_array: FillSequentially(|i| base_array[i * 2]),
 //! });
 //! # }
+//! # }
 //! 
 //! # fn main() {
 //! #   example1();
 //! #   example2();
-//! #   example3();
-//! #   example4();
+//! #   #[cfg(feature = "macro")] {
+//! #     using_macro::example3();
+//! #     using_macro::example4();
+//! #   }
 //! # }
 //! ```
 //! 
@@ -258,6 +264,7 @@ use core::marker::PhantomData;
 use core::ptr::NonNull;
 pub use owned::Owned;
 pub use seq::Seq;
+#[cfg(feature = "macro")]
 pub use varlen_macro::define_varlen;
 pub use vbox::VBox;
 

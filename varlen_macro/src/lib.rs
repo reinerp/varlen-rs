@@ -171,7 +171,10 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
         }
     };
     if d.generics.params.len() != 0 || d.generics.where_clause.is_some() {
-        return Err(Error("define_varlen does not yet support generic types", d.generics.span()));
+        return Err(Error(
+            "define_varlen does not yet support generic types",
+            d.generics.span(),
+        ));
     }
     let d_attrs = d.attrs;
     let fields = if let Data::Struct(s) = d.data {

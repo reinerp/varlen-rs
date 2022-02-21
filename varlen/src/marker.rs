@@ -8,6 +8,8 @@
 /// Variable-length fields of `#[define_varlen]` structs are `FieldMarker`:
 ///
 /// ```
+/// # #[cfg(feature = "macro")]
+/// # mod m {
 /// use varlen::prelude::*;
 /// use varlen::marker::FieldMarker;
 ///
@@ -20,6 +22,7 @@
 /// fn field_x(s: &S) -> &FieldMarker<Str> {
 ///     &s.x
 /// }
+/// # }
 /// # fn main() { }
 /// ```
 ///
@@ -56,6 +59,8 @@ impl<T> FieldMarker<T> {
 /// Variable-length array fields of `#[define_varlen]` structs are `ArrayMarker`:
 ///
 /// ```
+/// # #[cfg(feature = "macro")]
+/// # mod m {
 /// use varlen::prelude::*;
 /// use varlen::marker::ArrayMarker;
 ///
@@ -71,6 +76,7 @@ impl<T> FieldMarker<T> {
 /// fn field_array(s: &S) -> &ArrayMarker<u16> {
 ///     &s.array
 /// }
+/// # }
 /// ```
 ///
 /// # Usage
