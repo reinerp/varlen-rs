@@ -32,7 +32,7 @@
 //!         CountedStrInitImpl(
 //!             tup2::Init(
 //!                 FixedLen(count),
-//!                 Str::copy_from_str(src),
+//!                 Str::copy(src),
 //!             )
 //!         )
 //!     }
@@ -85,7 +85,7 @@
 ///         CountedStrInitImpl(
 ///             tup2::Init(
 ///                 FixedLen(count),
-///                 Str::copy_from_str(src),
+///                 Str::copy(src),
 ///             )
 ///         )
 ///     }
@@ -150,8 +150,8 @@
 ///
 /// let t: VBox<TwoArrays<u16, u8>> = VBox::new(TwoArraysInit(
 ///     tup2::Init(
-///         Array::copy_from_slice(&[1, 2, 3]),
-///         Array::copy_from_slice(&[4, 5, 6, 7]),
+///         Array::copy(&[1, 2, 3]),
+///         Array::copy(&[4, 5, 6, 7]),
 ///     )
 /// ));
 /// assert_eq!(&t.inner().refs().0[..], &[1, 2, 3]);

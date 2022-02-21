@@ -23,7 +23,7 @@
     //! ```
     //! use varlen::prelude::*;
     //! use varlen::Layout;
-    //! let s = VBox::new(Str::copy_from_str("hello"));
+    //! let s = VBox::new(Str::copy("hello"));
     //! assert_eq!(&s[..], "hello");
     //! // Layout is as specified above:
     //! assert_eq!(s.calculate_layout().size(), std::mem::size_of::<usize>() + 5)
@@ -62,7 +62,7 @@ define_varlen_newtype! {
     /// ```
     /// use varlen::prelude::*;
     /// use varlen::Layout;
-    /// let s = VBox::new(Str::copy_from_str("hello"));
+    /// let s = VBox::new(Str::copy("hello"));
     /// assert_eq!(&s[..], "hello");
     /// // Layout is as specified above:
     /// assert_eq!(s.calculate_layout().size(), std::mem::size_of::<usize>() + 5)
@@ -77,9 +77,9 @@ define_varlen_newtype! {
     /// ```
     /// use varlen::prelude::*;
     /// // Short string fits:
-    /// let s: VBox<Str<u8>> = VBox::new(Str::try_copy_from_str("hello").unwrap());
+    /// let s: VBox<Str<u8>> = VBox::new(Str::try_copy("hello").unwrap());
     /// // Long string doesn't fit:
-    /// assert!(Str::<u8>::try_copy_from_str(std::str::from_utf8(&[b'a'; 257]).unwrap()).is_none());
+    /// assert!(Str::<u8>::try_copy(std::str::from_utf8(&[b'a'; 257]).unwrap()).is_none());
     /// ```
     )]
     pub struct Str<(Len: ArrayLen = usize)>(Array<u8, Len>);
@@ -110,7 +110,7 @@ impl<Len: ArrayLen> Str<Len> {
     ///
     /// ```
     /// use varlen::prelude::*;
-    /// let mut s = VBox::new(Str::copy_from_str("hello"));
+    /// let mut s = VBox::new(Str::copy("hello"));
     /// s.as_mut().mut_slice().make_ascii_uppercase();
     /// assert_eq!(&s[..], "HELLO");
     /// ```
@@ -131,11 +131,11 @@ impl Str {
     ///
     /// ```
     /// use varlen::prelude::*;
-    /// let s = VBox::new(Str::copy_from_str("hello"));
+    /// let s = VBox::new(Str::copy("hello"));
     /// assert_eq!(&s[..], "hello");
     /// ```
-    pub fn copy_from_str(s: &str) -> impl Initializer<Self> + '_ {
-        Str::try_copy_from_str(s).unwrap()
+    pub fn copy(s: &str) -> impl Initializer<Self> + '_ {
+        Str::try_copy(s).unwrap()
     }
 }
 #[allow(rustdoc::missing_doc_code_examples)]
@@ -145,12 +145,12 @@ impl<Len: ArrayLen> Str<Len> {
     /// ```
     /// use varlen::prelude::*;
     /// // Short string fits:
-    /// let s: VBox<Str<u8>> = VBox::new(Str::try_copy_from_str("hello").unwrap());
+    /// let s: VBox<Str<u8>> = VBox::new(Str::try_copy("hello").unwrap());
     /// // Long string doesn't fit:
-    /// assert!(Str::<u8>::try_copy_from_str(std::str::from_utf8(&[b'a'; 257]).unwrap()).is_none());
+    /// assert!(Str::<u8>::try_copy(std::str::from_utf8(&[b'a'; 257]).unwrap()).is_none());
     /// ```
-    pub fn try_copy_from_str(s: &str) -> Option<impl Initializer<Self> + '_> {
-        Some(StrInit(Array::try_copy_from_slice(s.as_bytes())?))
+    pub fn try_copy(s: &str) -> Option<impl Initializer<Self> + '_> {
+        Some(StrInit(Array::try_copy(s.as_bytes())?))
     }
 }
 
@@ -162,7 +162,7 @@ impl<Len: ArrayLen> Str<Len> {
 ///
 /// ```
 /// use varlen::prelude::*;
-/// let arr = VBox::new(Str::copy_from_str("hello"));
+/// let arr = VBox::new(Str::copy("hello"));
 /// let seq: Seq<Str> = seq![arr.vclone(), arr.vclone(), arr.vclone()];  // Clones the string
 /// for a in seq.iter() {
 ///     assert_eq!(&a[..], "hello");
@@ -187,7 +187,7 @@ impl<'a, Len: ArrayLen> VClone<'a> for Str<Len> {
 ///
 /// ```
 /// use varlen::prelude::*;
-/// let arr = VBox::new(Str::copy_from_str("hello"));
+/// let arr = VBox::new(Str::copy("hello"));
 /// let seq: Seq<Str> = seq![arr.vcopy(), arr.vcopy(), arr.vcopy()];
 /// for a in seq.iter() {
 ///     assert_eq!(&a[..], "hello");

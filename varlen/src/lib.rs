@@ -82,8 +82,8 @@
 //! type Person = Tup3</* age */ FixedLen<usize>, /* name */ Str, /* email */ Str>;
 //! let person: VBox<Person> = VBox::new(tup3::Init(
 //!     FixedLen(16),
-//!     Str::copy_from_str("Harry Potter"),
-//!     Str::copy_from_str("harry.potter@example.com"),
+//!     Str::copy("Harry Potter"),
+//!     Str::copy("harry.potter@example.com"),
 //! ));
 //! ```
 //! 
@@ -96,7 +96,7 @@
 //! type MyTuple = Tup3<FixedLen<usize>, Str, Array<u16>>;
 //! # fn example1() {
 //! let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
-//!     FixedLen(16), Str::copy_from_str("hello"), Array::copy_from_slice(&[1u16, 2])));
+//!     FixedLen(16), Str::copy("hello"), Array::copy(&[1u16, 2])));
 //! 
 //! // Put multiple objects in a sequence, with tightly packed memory layout:
 //! let sequence: Seq<MyTuple> = seq![my_tuple.vcopy(), my_tuple.vcopy()];
@@ -120,7 +120,7 @@
 //! }
 //! # fn example2() {
 //! # let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
-//! #     FixedLen(16), Str::copy_from_str("hello"), Array::copy_from_slice(&[1u16, 2])));
+//! #     FixedLen(16), Str::copy("hello"), Array::copy(&[1u16, 2])));
 //! let my_struct: VBox<MyStruct> = VBox::new(MyStructInit(my_tuple));
 //! # }
 //! 
@@ -141,13 +141,13 @@
 //! }
 //! # pub fn example3() {
 //! # let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
-//! #     FixedLen(16), Str::copy_from_str("hello"), Array::copy_from_slice(&[1u16, 2])));
+//! #     FixedLen(16), Str::copy("hello"), Array::copy(&[1u16, 2])));
 //! # let my_struct: VBox<MyStruct> = VBox::new(MyStructInit(my_tuple));
 //! let s: VBox<MyMacroStruct> = VBox::new(
 //!     my_macro_struct::Init{
 //!         age: 16,
-//!         name: Str::copy_from_str("Harry Potter"),
-//!         email: Str::copy_from_str("harry.potter@example.com"),
+//!         name: Str::copy("Harry Potter"),
+//!         email: Str::copy("harry.potter@example.com"),
 //!         child: my_struct,
 //!     }
 //! );
@@ -306,8 +306,8 @@ pub use vbox::VBox;
 /// }
 /// let mut s = Seq::new();
 /// push2(
-///     VBox::new(Str::copy_from_str("hello")),
-///     VBox::new(Str::copy_from_str("world")),
+///     VBox::new(Str::copy("hello")),
+///     VBox::new(Str::copy("world")),
 ///     &mut s);
 /// let mut iter = s.iter();
 /// assert_eq!(&iter.next().unwrap()[..], "hello");
@@ -342,7 +342,7 @@ pub unsafe trait VarLen: Sized {
     /// ```
     /// use varlen::prelude::*;
     /// use varlen::Layout;
-    /// let s = VBox::new(Str::copy_from_str("hello"));
+    /// let s = VBox::new(Str::copy("hello"));
     /// assert_eq!(s.calculate_layout().size(), std::mem::size_of::<usize>() + 5);
     /// ```
     fn calculate_layout(&self) -> Self::Layout;
@@ -392,7 +392,7 @@ pub unsafe trait VarLen: Sized {
     /// let v: VBox<Ty> =
     ///     VBox::new(tup2::Init(
     ///         FixedLen("hello".to_string()),
-    ///         Str::copy_from_str("world"),
+    ///         Str::copy("world"),
     ///     ));
     /// unsafe {
     ///     let p = v.into_raw();
@@ -429,7 +429,7 @@ pub unsafe trait VarLen: Sized {
 /// ```
 /// use varlen::prelude::*;
 ///
-/// let s_box: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+/// let s_box: VBox<Str> = VBox::new(Str::copy("hello"));
 /// let s: &Str = &*s_box;
 /// let seq: Seq<Str> = seq![s.vclone(), s.vclone(), s.vclone()];
 /// let mut iter = seq.iter();
@@ -446,7 +446,7 @@ pub trait VClone<'a>: VarLen {
     /// ```
     /// use varlen::prelude::*;
     ///
-    /// let s_box: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+    /// let s_box: VBox<Str> = VBox::new(Str::copy("hello"));
     /// let s: &Str = &*s_box;
     /// let seq: Seq<Str> = seq![s.vclone(), s.vclone(), s.vclone()];
     /// let mut iter = seq.iter();
@@ -464,7 +464,7 @@ pub trait VClone<'a>: VarLen {
     /// ```
     /// use varlen::prelude::*;
     ///
-    /// let s_box: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+    /// let s_box: VBox<Str> = VBox::new(Str::copy("hello"));
     /// let s: &Str = &*s_box;
     /// let seq: Seq<Str> = seq![s.vclone(), s.vclone(), s.vclone()];
     /// let mut iter = seq.iter();
@@ -486,7 +486,7 @@ pub trait VClone<'a>: VarLen {
 /// ```
 /// use varlen::prelude::*;
 ///
-/// let s1: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+/// let s1: VBox<Str> = VBox::new(Str::copy("hello"));
 /// let s2: VBox<Str> = VBox::new(s1.vcopy());
 /// ```
 ///
@@ -503,7 +503,7 @@ pub unsafe trait VCopy<'a>: VClone<'a> {
     /// ```
     /// use varlen::prelude::*;
     ///
-    /// let s1: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+    /// let s1: VBox<Str> = VBox::new(Str::copy("hello"));
     /// let s2: VBox<Str> = VBox::new(s1.vcopy());
     /// ```
     fn vcopy(&'a self) -> VCopier<'a, Self> {
@@ -520,7 +520,7 @@ pub unsafe trait VCopy<'a>: VClone<'a> {
 /// ```
 /// use varlen::prelude::*;
 ///
-/// let s1: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+/// let s1: VBox<Str> = VBox::new(Str::copy("hello"));
 /// let s2: VBox<Str> = VBox::new(s1.vcopy());
 /// ```
 pub struct VCopier<'a, T>(&'a T);
@@ -581,7 +581,7 @@ pub trait Layout: Eq {
 /// use std::ptr::NonNull;
 ///
 /// // Make an initializer. This is a cheap pointer-only operation.
-/// let init = Str::copy_from_str("hello world");
+/// let init = Str::copy("hello world");
 ///
 /// // Step 1: calculate memory requirement.
 /// let layout = init.calculate_layout_cautious().unwrap();
@@ -678,7 +678,7 @@ pub unsafe trait Initializer<T: VarLen> {
 /// ```
 /// use varlen::prelude::*;
 /// let b: VBox<Tup2<FixedLen<u16>, Str>> = VBox::new(tup2::Init(
-///     FixedLen(4), Str::copy_from_str("hello")));
+///     FixedLen(4), Str::copy("hello")));
 /// assert_eq!(b.refs().0.0, 4);
 /// assert_eq!(&b.refs().1[..], "hello");
 /// ```

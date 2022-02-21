@@ -6,7 +6,7 @@
 //!
 //! ```
 //! use varlen::prelude::*;
-//! let s = VBox::new(Str::copy_from_str("hello"));
+//! let s = VBox::new(Str::copy("hello"));
 //! assert_eq!("hello", &s[..]);
 //! ```
 
@@ -29,7 +29,7 @@ use core::ptr::NonNull;
 ///
 /// ```
 /// use varlen::prelude::*;
-/// let s = VBox::new(Str::copy_from_str("hello"));
+/// let s = VBox::new(Str::copy("hello"));
 /// assert_eq!("hello", &s[..]);
 /// ```
 pub struct VBox<T: VarLen>(NonNull<T>);
@@ -48,7 +48,7 @@ impl<T: VarLen> VBox<T> {
     ///
     /// ```
     /// use varlen::prelude::*;
-    /// let s = VBox::new(Str::copy_from_str("hello"));
+    /// let s = VBox::new(Str::copy("hello"));
     /// assert_eq!("hello", &s[..]);
     /// ```
     pub fn new(init: impl Initializer<T>) -> Self {
@@ -74,7 +74,7 @@ impl<T: VarLen> VBox<T> {
     ///
     /// ```
     /// use varlen::prelude::*;
-    /// let mut s = VBox::new(Str::copy_from_str("Hello"));
+    /// let mut s = VBox::new(Str::copy("Hello"));
     /// assert_eq!("Hello", &s[..]);
     /// s.as_mut().mut_slice().make_ascii_uppercase();
     /// assert_eq!("HELLO", &s[..]);
@@ -102,7 +102,7 @@ impl<T: VarLen> VBox<T> {
     /// ```
     /// use varlen::prelude::*;
     ///
-    /// let b = VBox::new(Str::copy_from_str("hello"));
+    /// let b = VBox::new(Str::copy("hello"));
     /// let b = unsafe {
     ///     let p = b.into_raw();
     ///     VBox::from_raw(p)
@@ -132,7 +132,7 @@ impl<T: VarLen> VBox<T> {
     /// ```
     /// use varlen::prelude::*;
     ///
-    /// let b = VBox::new(Str::copy_from_str("hello"));
+    /// let b = VBox::new(Str::copy("hello"));
     /// let b = unsafe {
     ///     let p = b.into_raw();
     ///     VBox::from_raw(p)
@@ -173,7 +173,7 @@ impl<T: VarLen> core::ops::Deref for VBox<T> {
 /// use varlen::prelude::*;
 ///
 /// let mut seq: Seq<Str> = Seq::new();
-/// let b = VBox::new(Str::copy_from_str("hello"));
+/// let b = VBox::new(Str::copy("hello"));
 /// seq.push(b);
 /// ```
 unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
@@ -204,7 +204,7 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
 ///
 /// ```
 /// use varlen::prelude::*;
-/// let str: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+/// let str: VBox<Str> = VBox::new(Str::copy("hello"));
 /// let str2 = str.clone();
 /// assert_eq!(&str2[..], "hello");
 /// ```
@@ -217,7 +217,7 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
 ///
 /// ```
 /// use varlen::prelude::*;
-/// let str: VBox<Str> = VBox::new(Str::copy_from_str("hello"));
+/// let str: VBox<Str> = VBox::new(Str::copy("hello"));
 /// let seq: Seq<Str> = seq![
 ///     // Best. Calls memcpy straight into the sequence storage
 ///     str.vcopy(),   
@@ -250,7 +250,7 @@ mod tests {
         type Ty = Tup2<FixedLen<String>, Str>;
         let v: VBox<Ty> = VBox::new(tup2::Init(
             FixedLen("hello".to_string()),
-            Str::copy_from_str("world"),
+            Str::copy("world"),
         ));
         drop(v);
     }

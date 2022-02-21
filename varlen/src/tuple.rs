@@ -12,8 +12,8 @@
 //! type Person = Tup3<FixedLen<u8> /* age */, Str /* name */, Str /* postal address */>;
 //! let person: VBox<Person> = VBox::new(tup3::Init(
 //!     FixedLen(16),
-//!     Str::copy_from_str("Harry Potter"),
-//!     Str::copy_from_str("Cupboard under the stairs"),
+//!     Str::copy("Harry Potter"),
+//!     Str::copy("Cupboard under the stairs"),
 //! ));
 //! assert_eq!(16, person.refs().0.0);
 //! assert_eq!("Harry Potter", &person.refs().1[..]);
@@ -261,8 +261,8 @@ define_tuple!(
     /// use varlen::prelude::*;
     /// use varlen::Layout;
     /// let mut t: VBox<Tup2<Str, Str>> = VBox::new(tup2::Init(
-    ///     Str::copy_from_str("hello"),
-    ///     Str::copy_from_str("world"),
+    ///     Str::copy("hello"),
+    ///     Str::copy("world"),
     /// ));
     /// 
     /// assert_eq!(&t.refs().0[..], "hello");
@@ -282,9 +282,9 @@ define_tuple!(
     /// use varlen::prelude::*;
     /// use varlen::Layout;
     /// let mut t: VBox<Tup3<Str, Str, Str>> = VBox::new(tup3::Init(
-    ///     Str::copy_from_str("hello"),
-    ///     Str::copy_from_str("brave"),
-    ///     Str::copy_from_str("world"),
+    ///     Str::copy("hello"),
+    ///     Str::copy("brave"),
+    ///     Str::copy("world"),
     /// ));
     /// 
     /// assert_eq!(&t.refs().0[..], "hello");
@@ -306,10 +306,10 @@ define_tuple!(
     /// use varlen::prelude::*;
     /// use varlen::Layout;
     /// let mut t: VBox<Tup4<Str, Str, Str, Str>> = VBox::new(tup4::Init(
-    ///     Str::copy_from_str("hello"),
-    ///     Str::copy_from_str("brave"),
-    ///     Str::copy_from_str("new"),
-    ///     Str::copy_from_str("world"),
+    ///     Str::copy("hello"),
+    ///     Str::copy("brave"),
+    ///     Str::copy("new"),
+    ///     Str::copy("world"),
     /// ));
     /// 
     /// assert_eq!(&t.refs().0[..], "hello");
@@ -333,11 +333,11 @@ define_tuple!(
     /// use varlen::prelude::*;
     /// use varlen::Layout;
     /// let mut t: VBox<Tup5<Str, Str, Str, Str, Str>> = VBox::new(tup5::Init(
-    ///     Str::copy_from_str("hello"),
-    ///     Str::copy_from_str("brave"),
-    ///     Str::copy_from_str("new"),
-    ///     Str::copy_from_str("world"),
-    ///     Str::copy_from_str("!!!"),
+    ///     Str::copy("hello"),
+    ///     Str::copy("brave"),
+    ///     Str::copy("new"),
+    ///     Str::copy("world"),
+    ///     Str::copy("!!!"),
     /// ));
     /// 
     /// assert_eq!(&t.refs().0[..], "hello");

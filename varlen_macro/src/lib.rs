@@ -29,8 +29,8 @@ use syn::{Attribute, Data, DeriveInput, Field, Fields, Ident, Type, Visibility};
 /// let mut p: VBox<Person> = VBox::new(
 ///     person::Init{
 ///         age: 16,
-///         name: Str::copy_from_str("Harry Potter"),
-///         email: Str::copy_from_str("harry.potter@example.com"),
+///         name: Str::copy("Harry Potter"),
+///         email: Str::copy("harry.potter@example.com"),
 ///     }
 /// );
 /// assert_eq!(p.age, 16);

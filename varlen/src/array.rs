@@ -23,7 +23,7 @@
 //! ```
 //! use varlen::prelude::*;
 //! use varlen::Layout;
-//! let a = VBox::<Array<u8>>::new(Array::copy_from_slice(&[1u8, 2, 3]));
+//! let a = VBox::<Array<u8>>::new(Array::copy(&[1u8, 2, 3]));
 //! assert_eq!(&a[..], &[1, 2, 3]);
 //! // Layout is as specified above:
 //! assert_eq!(a.calculate_layout().size(), std::mem::size_of::<usize>() + 3)
@@ -65,7 +65,7 @@ use core::ptr::NonNull;
 /// 
 /// ```
 /// use varlen::prelude::*;
-/// let mut a: VBox<Array<u16>> = VBox::new(Array::copy_from_slice(&[1, 2, 3]));
+/// let mut a: VBox<Array<u16>> = VBox::new(Array::copy(&[1, 2, 3]));
 /// assert_eq!(&a[..], &[1, 2, 3]);
 /// a.as_mut().mut_slice()[2] = 5;
 /// assert_eq!(&a[..], &[1, 2, 5]);
@@ -81,10 +81,10 @@ use core::ptr::NonNull;
 /// ```
 /// use varlen::prelude::*;
 /// // Construction succeeds for short arrays:
-/// let arr: VBox<Array<u16, u8>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());
+/// let arr: VBox<Array<u16, u8>> = VBox::new(Array::try_copy(&[1, 2, 3]).unwrap());
 /// assert_eq!(&arr[..], &[1, 2, 3]);
 /// // Construction fails for arrays that are too long:
-/// assert!(Array::<u16, u8>::try_copy_from_slice(&[1u16; 257]).is_none());
+/// assert!(Array::<u16, u8>::try_copy(&[1u16; 257]).is_none());
 /// ```
 /// 
 /// # Layout
@@ -94,7 +94,7 @@ use core::ptr::NonNull;
 /// ```
 /// use varlen::prelude::*;
 /// use varlen::Layout;
-/// let arr: VBox<Array<u8, u8>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());
+/// let arr: VBox<Array<u8, u8>> = VBox::new(Array::try_copy(&[1, 2, 3]).unwrap());
 /// assert_eq!(1 + 3, arr.calculate_layout().size()); 
 /// ```
 )]
@@ -110,7 +110,7 @@ pub struct Array<T, Len: ArrayLen = usize> {
 /// ```
 /// use varlen::prelude::*;
 /// use varlen::Layout;
-/// let arr: VBox<Array<u8, u8>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());
+/// let arr: VBox<Array<u8, u8>> = VBox::new(Array::try_copy(&[1, 2, 3]).unwrap());
 /// assert_eq!(1 + 3, arr.calculate_layout().size());
 /// ```
 
@@ -175,14 +175,14 @@ impl<T> Array<T> {
     ///
     /// ```
     /// use varlen::prelude::*;
-    /// let a = VBox::<Array<u8>>::new(Array::copy_from_slice(&[1, 2, 3]));
+    /// let a = VBox::<Array<u8>>::new(Array::copy(&[1, 2, 3]));
     /// assert_eq!(&a[..], &[1, 2, 3]);
     /// ```
-    pub fn copy_from_slice(src: &[T]) -> SizedInit<crate::array_init::CopyFrom<T>>
+    pub fn copy(src: &[T]) -> SizedInit<crate::array_init::CopyFrom<T>>
     where
         T: Copy,
     {
-        Array::try_copy_from_slice(src).unwrap()
+        Array::try_copy(src).unwrap()
     }
 
     /// Initializes an [`Array`] by cloning from an existing slice.
@@ -210,7 +210,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     ///
     /// ```
     /// use varlen::prelude::*;
-    /// let arr: VBox<Array<u8, u16>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());
+    /// let arr: VBox<Array<u8, u16>> = VBox::new(Array::try_copy(&[1, 2, 3]).unwrap());
     /// assert_eq!(3u16, arr.len_short());  // Gets the length as a u16
     /// assert_eq!(3usize, arr.len());  // Gets the length as a usize
     #[inline]
@@ -224,7 +224,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     ///
     /// ```
     /// use varlen::prelude::*;
-    /// let mut a = VBox::<Array<u16>>::new(Array::copy_from_slice(&[1, 2, 3]));
+    /// let mut a = VBox::<Array<u16>>::new(Array::copy(&[1, 2, 3]));
     /// a.as_mut().mut_slice()[2] = 5;
     /// assert_eq!(&a[..], &[1, 2, 5]);
     /// ```
@@ -248,17 +248,17 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     /// ```
     /// use varlen::prelude::*;
     /// // Length fits in u8:
-    /// let a: VBox<Array<u8, u8>> = VBox::new(Array::try_copy_from_slice(&[1, 2, 3]).unwrap());
+    /// let a: VBox<Array<u8, u8>> = VBox::new(Array::try_copy(&[1, 2, 3]).unwrap());
     /// assert_eq!(&a[..], &[1, 2, 3]);
     /// // Length doesn't fit in u8:
-    /// assert!(Array::<u8, u8>::try_copy_from_slice(&[1; 257]).is_none()); // Length is too large for u8.
+    /// assert!(Array::<u8, u8>::try_copy(&[1; 257]).is_none()); // Length is too large for u8.
     /// ```
     ///
     /// # See also
     ///
-    /// When `Len=usize`, you may prefer [`Array::copy_from_slice`] which is guaranteed not to fail.
+    /// When `Len=usize`, you may prefer [`Array::copy`] which is guaranteed not to fail.
     #[inline]
-    pub fn try_copy_from_slice(src: &[T]) -> Option<SizedInit<crate::array_init::CopyFrom<T>, Len>>
+    pub fn try_copy(src: &[T]) -> Option<SizedInit<crate::array_init::CopyFrom<T>, Len>>
     where
         T: Copy,
     {
@@ -282,7 +282,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
     ///
     /// # See also
     ///
-    /// When `Len=usize`, you may prefer [`Array::copy_from_slice`] which is guaranteed not to fail.
+    /// When `Len=usize`, you may prefer [`Array::copy`] which is guaranteed not to fail.
     pub fn try_clone_from_slice(
         src: &[T],
     ) -> Option<SizedInit<crate::array_init::CloneFrom<T>, Len>>
@@ -300,7 +300,7 @@ impl<T, Len: ArrayLen> Array<T, Len> {
 ///
 /// ```
 /// use varlen::prelude::*;
-/// let arr = VBox::new(Array::copy_from_slice(&[1u8, 2, 3]));
+/// let arr = VBox::new(Array::copy(&[1u8, 2, 3]));
 /// let seq: Seq<_> = seq![arr.vclone(), arr.vclone(), arr.vclone()];  // Clones the array
 /// for a in seq.iter() {
 ///     assert_eq!(&a[..], &[1, 2, 3]);
@@ -324,7 +324,7 @@ impl<'a, T: 'a + Clone, Len: ArrayLen> VClone<'a> for Array<T, Len> {
 ///
 /// ```
 /// use varlen::prelude::*;
-/// let arr = VBox::new(Array::copy_from_slice(&[1u8, 2, 3]));
+/// let arr = VBox::new(Array::copy(&[1u8, 2, 3]));
 /// let seq: Seq<Array<u8>> = seq![arr.vcopy(), arr.vcopy(), arr.vcopy()];  // Copies the array
 /// for a in seq.iter() {
 ///     assert_eq!(&a[..], &[1, 2, 3]);

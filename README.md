@@ -83,8 +83,8 @@ use varlen::prelude::*;
 type Person = Tup3</* age */ FixedLen<usize>, /* name */ Str, /* email */ Str>;
 let person: VBox<Person> = VBox::new(tup3::Init(
     FixedLen(16),
-    Str::copy_from_str("Harry Potter"),
-    Str::copy_from_str("harry.potter@example.com"),
+    Str::copy("Harry Potter"),
+    Str::copy("harry.potter@example.com"),
 ));
 ```
 
@@ -96,7 +96,7 @@ use varlen::prelude::*;
 // Define a variable-length tuple:
 type MyTuple = Tup3<FixedLen<usize>, Str, Array<u16>>;
 let my_tuple: VBox<MyTuple> = VBox::new(tup3::Init(
-    FixedLen(16), Str::copy_from_str("hello"), Array::copy_from_slice(&[1u16, 2])));
+    FixedLen(16), Str::copy("hello"), Array::copy(&[1u16, 2])));
 
 // Put multiple objects in a sequence, with tightly packed memory layout:
 let sequence: Seq<MyTuple> = seq![my_tuple.vcopy(), my_tuple.vcopy()];
@@ -131,8 +131,8 @@ struct MyMacroStruct {
 let s: VBox<MyMacroStruct> = VBox::new(
     my_macro_struct::Init{
         age: 16,
-        name: Str::copy_from_str("Harry Potter"),
-        email: Str::copy_from_str("harry.potter@example.com"),
+        name: Str::copy("Harry Potter"),
+        email: Str::copy("harry.potter@example.com"),
         child: my_struct,
     }
 );

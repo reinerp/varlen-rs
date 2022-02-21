@@ -10,7 +10,7 @@
 //! let owned: Owned<TypeWithDrop> = Owned::new_in(
 //!     tup2::Init(
 //!         FixedLen(Box::new(42)),
-//!         Str::copy_from_str("hello")
+//!         Str::copy("hello")
 //!     ),
 //!     &arena);
 //! assert_eq!(42, *owned.refs().0.0);
@@ -38,7 +38,7 @@ use core::ptr::NonNull;
 /// let owned: Owned<TypeWithDrop> = Owned::new_in(
 ///     tup2::Init(
 ///         FixedLen(Box::new(42)),
-///         Str::copy_from_str("hello")
+///         Str::copy("hello")
 ///     ),
 ///     &arena);
 /// assert_eq!(42, *owned.refs().0.0);
@@ -136,7 +136,7 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
     /// use bumpalo::Bump;
     ///
     /// let arena = Bump::new();
-    /// let mut s = Owned::new_in(Str::copy_from_str("Hello"), &arena);
+    /// let mut s = Owned::new_in(Str::copy("Hello"), &arena);
     /// s.as_mut().mut_slice().make_ascii_uppercase();
     /// assert_eq!("HELLO", &s[..]);
     /// s.as_mut().mut_slice().make_ascii_lowercase();
@@ -156,7 +156,7 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
     /// use bumpalo::Bump;
     /// use varlen::prelude::*;
     /// let arena = Bump::new();
-    /// let s = Owned::new_in(Str::copy_from_str("hello"), &arena);
+    /// let s = Owned::new_in(Str::copy("hello"), &arena);
     /// let s = s.leak();
     /// assert_eq!("hello", &s[..]);
     /// # }
@@ -175,7 +175,7 @@ impl<'storage, T: VarLen> Owned<'storage, T> {
     /// use bumpalo::Bump;
     /// use varlen::prelude::*;
     /// let arena = Bump::new();
-    /// let s = Owned::new_in(Str::copy_from_str("hello"), &arena);
+    /// let s = Owned::new_in(Str::copy("hello"), &arena);
     /// assert_eq!("hello", &s[..]);
     /// # }
     /// ```
