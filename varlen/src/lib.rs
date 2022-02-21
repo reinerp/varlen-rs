@@ -645,13 +645,35 @@ pub unsafe trait Initializer<T: VarLen> {
 ///
 /// # Examples
 ///
+/// Put a fixed-length type in a variable-sized box:
+///
 /// ```
 /// use varlen::prelude::*;
 /// let b: VBox<FixedLen<u16>> = VBox::new(FixedLen(4));
 /// assert_eq!(b.0, 4);
 /// ```
+///
+/// Create a tuple of variable-length types and a fixed-length type:
+///
+/// ```
+/// use varlen::prelude::*;
+/// let b: VBox<Tup2<FixedLen<u16>, Str>> = VBox::new(tup2::Init(
+///     FixedLen(4), Str::copy_from_str("hello")));
+/// assert_eq!(b.refs().0.0, 4);
+/// assert_eq!(&b.refs().1[..], "hello");
+/// ```
 pub struct FixedLen<T>(pub T);
 
+/// The variable-length layout of a fixed-length type.
+///
+/// # Examples
+///
+/// ```
+/// use varlen::prelude::*;
+/// use varlen::Layout as _;
+/// let layout = FixedLen(4u16).calculate_layout_cautious().unwrap();
+/// assert_eq!(layout.size(), std::mem::size_of::<u16>());
+/// ```
 pub struct FixedLenLayout<T>(PhantomData<T>);
 
 impl<T> PartialEq for FixedLenLayout<T> {
@@ -695,6 +717,16 @@ unsafe impl<T> VarLen for FixedLen<T> {
     }
 }
 
+/// Initializer that clones from a [`FixedLen<T>`].
+///
+/// # Examples
+///
+/// ```
+/// use varlen::prelude::*;
+/// let orig = FixedLen(4u16);
+/// let the_clone = VBox::new(orig.vclone());
+/// assert_eq!(orig.0, the_clone.0);
+/// ```
 pub struct FixedLenCloner<'a, T>(&'a T);
 
 impl<'a, T: 'a + Clone> VClone<'a> for FixedLen<T> {
