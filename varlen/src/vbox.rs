@@ -14,7 +14,7 @@ use crate::VClone;
 
 use super::{Initializer, Layout, VarLen};
 
-use core::alloc;
+use alloc::alloc;
 use core::pin::Pin;
 use core::ptr::NonNull;
 
@@ -55,7 +55,7 @@ impl<T: VarLen> VBox<T> {
         let alloc_layout = alloc::Layout::from_size_align(layout.size(), T::ALIGN)
             .unwrap_or_else(|_| allocation_overflow());
         unsafe {
-            let p = std::alloc::alloc(alloc_layout) as *mut T;
+            let p = alloc::alloc(alloc_layout) as *mut T;
             let layout_size = layout.size();
             init.initialize(NonNull::new_unchecked(p), layout);
             let mut p = NonNull::new_unchecked(p);
@@ -147,7 +147,7 @@ impl<T: VarLen> Drop for VBox<T> {
             let layout = T::calculate_layout(&*self);
             let alloc_layout = alloc::Layout::from_size_align_unchecked(layout.size(), T::ALIGN);
             T::vdrop(self.as_mut(), layout);
-            std::alloc::dealloc(self.0.as_ptr() as *mut u8, alloc_layout);
+            alloc::dealloc(self.0.as_ptr() as *mut u8, alloc_layout);
         }
     }
 }
@@ -185,7 +185,7 @@ unsafe impl<T: VarLen> Initializer<T> for VBox<T> {
         //  * dst is unique
         //  * dst size is guaranteed by the SizedInitializer call
         core::ptr::copy_nonoverlapping(ptr, dst.as_ptr().cast::<u8>(), size);
-        std::alloc::dealloc(ptr, layout);
+        alloc::dealloc(ptr, layout);
         core::mem::forget(self);
     }
 
@@ -239,6 +239,8 @@ impl<T: for<'a> VClone<'a>> Clone for VBox<T> {
 
 #[cfg(test)]
 mod tests {
+    use alloc::string::{String, ToString};
+
     #[test]
     fn vdrop() {
         use crate::prelude::*;

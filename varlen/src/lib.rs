@@ -243,6 +243,9 @@
 //! * `macro`. Enables procedural macro support, for defining variable-length structs using [`#[define_varlen]`][crate::define_varlen]. Adds a dependency on `varlen_macro`, `syn` and `quote`.
 //!
 
+#![no_std]
+extern crate alloc;
+
 pub mod array;
 pub mod array_init;
 #[doc(hidden)]

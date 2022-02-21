@@ -14,12 +14,12 @@ macro_rules! make_svgbobdoc {
     (
         $( #![doc = $d:literal] )*
     ) => (
-        std::concat!( $( $d, '\n' ),* )
+        core::concat!( $( $d, '\n' ),* )
     );
     (
         $( #[doc = $d:literal] )*
     ) => (
-        std::concat!( $( $d, '\n' ),* )
+        core::concat!( $( $d, '\n' ),* )
     );
 }
 

@@ -214,7 +214,7 @@ macro_rules! define_tuple {
 
             unsafe fn initialize(
                 self,
-                dst: std::ptr::NonNull<$name<$($arg),*>>,
+                dst: core::ptr::NonNull<$name<$($arg),*>>,
                 layout: $mod::Layout<$($arg),*>,
             ) {
                 let $mod::Init($($fieldname),*) = self;

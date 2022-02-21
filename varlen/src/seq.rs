@@ -48,7 +48,7 @@
 
 use crate::owned::Owned;
 use crate::{Initializer, Layout, VarLen};
-use core::alloc;
+use alloc::alloc;
 use core::pin::Pin;
 use core::ptr::NonNull;
 
@@ -151,14 +151,14 @@ pub struct UncheckedIndexing;
 impl private::Sealed for UncheckedIndexing {
     const INSTANCE: Self = UncheckedIndexing;
     unsafe fn alloc_storage(layout: alloc::Layout) -> Option<NonNull<u8>> {
-        NonNull::new(std::alloc::alloc(layout))
+        NonNull::new(alloc::alloc(layout))
     }
     unsafe fn grow_storage(
         ptr: *mut u8,
         layout: alloc::Layout,
         new_size: usize,
     ) -> Option<NonNull<u8>> {
-        NonNull::new(std::alloc::realloc(ptr, layout, new_size))
+        NonNull::new(alloc::realloc(ptr, layout, new_size))
     }
 
     #[inline(always)]
@@ -230,7 +230,7 @@ impl private::Sealed for CheckedIndexing {
     const INSTANCE: Self = CheckedIndexing;
     unsafe fn alloc_storage(layout: alloc::Layout) -> Option<NonNull<u8>> {
         let (full_layout, bitmask_bytes) = add_bitmask_to_layout(layout)?;
-        let ptr = NonNull::new(std::alloc::alloc(full_layout))?;
+        let ptr = NonNull::new(alloc::alloc(full_layout))?;
         // Zero the bitmask.
         let bitmask =
             core::slice::from_raw_parts_mut(ptr.as_ptr().add(layout.size()), bitmask_bytes);
@@ -248,7 +248,7 @@ impl private::Sealed for CheckedIndexing {
         let (new_full_layout, new_bitmask_bytes) = add_bitmask_to_layout(
             alloc::Layout::from_size_align(new_size, old_layout.align()).ok()?,
         )?;
-        let ptr = NonNull::new(std::alloc::realloc(
+        let ptr = NonNull::new(alloc::realloc(
             ptr,
             old_full_layout,
             new_full_layout.size(),
@@ -494,8 +494,8 @@ fn try_realloc<Idx: Indexing>(
     minimum_offsets: usize,
     align: usize,
 ) -> Result<(NonNull<u8>, usize), OverflowError> {
-    let size_offsets = std::cmp::max(
-        std::cmp::max(minimum_offsets, (32 + align - 1) / align),
+    let size_offsets = core::cmp::max(
+        core::cmp::max(minimum_offsets, (32 + align - 1) / align),
         capacity_offsets.checked_mul(2).ok_or(OverflowError)?,
     );
     let size_bytes = size_offsets.checked_mul(align).ok_or(OverflowError)?;
@@ -1019,7 +1019,7 @@ impl<T: VarLen, Idx: Indexing> Drop for Seq<T, Idx> {
         }
         drop(self.take_elems());
         unsafe {
-            std::alloc::dealloc(self.ptr.as_ptr() as *mut u8, self.layout());
+            alloc::dealloc(self.ptr.as_ptr() as *mut u8, self.layout());
         }
     }
 }

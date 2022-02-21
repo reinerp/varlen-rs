@@ -38,6 +38,7 @@ use crate::array_init::{ArrayInitializer, CloneFrom};
 use crate::marker::ArrayMarker;
 use crate::{impl_initializer_as_newtype, Initializer, Layout, VClone, VCopy, VarLen};
 use core::pin::Pin;
+use core::ptr::NonNull;
 
 #[doc = crate::doc_macro::make_svgbobdoc!(
 /// An variable-length array with inline storage.
@@ -364,7 +365,7 @@ unsafe impl<T, Len: ArrayLen, Init: ArrayInitializer<T>> Initializer<Array<T, Le
         })
     }
 
-    unsafe fn initialize(self, dst: std::ptr::NonNull<Array<T, Len>>, layout: ArrayLayout) {
+    unsafe fn initialize(self, dst: NonNull<Array<T, Len>>, layout: ArrayLayout) {
         let header = Array {
             len: self.0,
             _array: crate::macro_support::init_array(
