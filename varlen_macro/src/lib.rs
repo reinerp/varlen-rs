@@ -1,4 +1,4 @@
-#![allow(unused_variables)]
+//! Macro `#[define_varlen]` for defining variable-length structs.
 
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
@@ -10,9 +10,9 @@ use syn::token::Comma;
 use syn::{Attribute, Data, DeriveInput, Field, Fields, Ident, Type, Visibility};
 
 /// Macro for defining variable-length structs.
-/// 
+///
 /// # Examples
-/// 
+///
 /// A struct with multiple variable-length fields, specified by `#[varlen]`:
 ///
 /// ```
@@ -40,25 +40,25 @@ use syn::{Attribute, Data, DeriveInput, Field, Fields, Ident, Type, Visibility};
 /// assert_eq!(&p.refs().email[..], "harry.potter@example.com");
 /// # }
 /// ```
-/// 
+///
 /// A struct with variable-length arrays. The arrays are annotated with
-/// `#[varlen_array]`. You may directly specify the array lengths as 
-/// any `const`-evaluatable expression that references the fields 
+/// `#[varlen_array]`. You may directly specify the array lengths as
+/// any `const`-evaluatable expression that references the fields
 /// annotated with `#[controls_layout]`:
-/// 
+///
 /// ```
 /// use varlen::prelude::*;
 /// #[define_varlen]
 /// struct MultipleArrays {
 ///     #[controls_layout]
 ///     len: usize,
-/// 
+///
 ///     #[varlen_array]
 ///     array1: [u16; *len],
-/// 
+///
 ///     #[varlen_array]
 ///     array2: [u8; *len],
-/// 
+///
 ///     #[varlen_array]
 ///     half_array: [u16; (*len) / 2],
 /// }
@@ -75,26 +75,26 @@ use syn::{Attribute, Data, DeriveInput, Field, Fields, Ident, Type, Visibility};
 /// assert_eq!(a.refs().half_array, &[1, 9]);
 /// # }
 /// ```
-/// 
+///
 /// # Attributes
-/// 
+///
 /// The following attributes are available on fields:
-/// 
+///
 /// * `#[varlen]` - use this for a field type which implements `VarLen`
 /// * `#[varlen_array]` - use this for an array-typed field. The length
-///    of the array may refer to fields annotated with 
+///    of the array may refer to fields annotated with
 ///    `#[controls_layout]`, and must be a `const`-evaluatable expression
 /// * `#[controls_layout]` - this marks a field as usable to specify the
 ///   length of a `#[varlen_array]` field. It also removes mutable access
 ///   to the field. Mutable access risks causing memory unsafety, in which
 ///   the length of the array is recorded incorrectly in memory.
-/// 
+///
 /// # Generated API
-/// 
+///
 /// See crate `varlen_generated` for an example of the generated code.
-/// 
+///
 /// For a struct `MyType`, the following is generated:
-/// 
+///
 /// * A type `MyType`, with variable-length fields replaced with
 ///   marker types `varlen::marker::FieldMarker` and `varlen::marker::ArrayMarker`
 /// * A module `my_type` (the snake-case version of the struct name), containing:
@@ -107,33 +107,33 @@ use syn::{Attribute, Data, DeriveInput, Field, Fields, Ident, Type, Visibility};
 /// * Trait implementations for `MyType`:
 ///   * `VarLen` for `MyType`
 ///   * `Drop` for `MyType`, which unconditionally panics.
-/// 
+///
 /// # Memory layout
-/// 
+///
 /// The object is laid out in memory with the fixed-length fields first. These are
 /// the fields which are not annotated with `#[varlen]` or `#[varlen_array]`. The
 /// fixed-length fields are laid out in whatever order is chosen by the Rust compiler.
-/// 
+///
 /// The variable-length fields always follow the fixed-length fields in memory. The
 /// variable-length fields are always laid out in the order specified in the struct
-/// definition. Padding is inserted between variable-length fields as needed to 
+/// definition. Padding is inserted between variable-length fields as needed to
 /// meet the alignment requirements of each field.
-/// 
-/// Padding before variable-length fields costs both memory and time. To minimize 
+///
+/// Padding before variable-length fields costs both memory and time. To minimize
 /// padding effects, as much as possible try to use the same alignment for all
 /// fields. Where this is not possible, try to order your fields from most-aligned
 /// to least-aligned: when a less-aligned field follows a more-aligned field, there
 /// are zero padding bytes, and the padding computation can be entirely optimized
 /// away.
-/// 
+///
 /// Access to a variable-length field requires running some code at runtime that
 /// skips over all previous variable-length fields in the struct. To minimize time
 /// spent on skipping over these fields, you can:
-/// 
+///
 /// * Store the result of `refs()` in a local variable, and reuse that variable
 ///   multiple times. This calculates the beginning of all variable-length fields
 ///   once, and then reuses that calculation.
-/// * Sort the variable-length fields of the struct so that the 
+/// * Sort the variable-length fields of the struct so that the
 ///   most-frequently-used fields come first.
 #[proc_macro_attribute]
 pub fn define_varlen(
@@ -170,6 +170,9 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             ))
         }
     };
+    if d.generics.params.len() != 0 || d.generics.where_clause.is_some() {
+        return Err(Error("define_varlen does not yet support generic types", d.generics.span()));
+    }
     let d_attrs = d.attrs;
     let fields = if let Data::Struct(s) = d.data {
         if let Fields::Named(n) = s.fields {
@@ -194,8 +197,8 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                     Meta {
                         ident: lengths_ident,
                         attrs: lengths_attr,
-                        vis: lengths_vis,
                         vis_inner: lengths_vis_inner,
+                        ..
                     },
                 tys: lengths_ty,
             },
@@ -232,7 +235,6 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 init_field: all_init_field,
                 ref_ty: all_ref_ty,
                 mut_ty: all_mut_ty,
-                mut_layout_ty: all_mut_layout_ty,
                 ref_field: all_ref_field,
                 mut_field: all_mut_field,
                 drop_field: all_drop_field,
@@ -498,10 +500,6 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
     })
 }
 
-// fn prune_generics(d: &Generics) -> Generics {
-//     d.clone()
-// }
-
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
 enum SimpleVisibility {
     Private = 0,
@@ -679,8 +677,6 @@ struct AllFields {
     ref_ty: Vec<TokenStream>,
     /// Mutable reference type, with lifetime 'a.
     mut_ty: Vec<TokenStream>,
-    /// Mutable reference type, with lifetime 'a. Even #[controls_layout] fields are mutable here.
-    mut_layout_ty: Vec<TokenStream>,
     /// Writes to the tail if necessary, then evaluates to the initializer for this field.
     init_field: Vec<TokenStream>,
     /// creates a reference to this field, given that '&self, layout: Layout' is in scope
@@ -701,7 +697,6 @@ impl AllFields {
             init_ty: Vec::new(),
             ref_ty: Vec::new(),
             mut_ty: Vec::new(),
-            mut_layout_ty: Vec::new(),
             init_field: Vec::new(),
             ref_field: Vec::new(),
             mut_field: Vec::new(),
@@ -758,9 +753,6 @@ impl FieldGroups {
             .mut_ty
             .push(quote_spanned! { span => &'a mut #ty });
         self.all_fields
-            .mut_layout_ty
-            .push(quote_spanned! { span => &'a mut #ty });
-        self.all_fields
             .init_field
             .push(quote_spanned! { span => self.#ident });
         self.all_fields
@@ -796,9 +788,6 @@ impl FieldGroups {
         self.all_fields
             .mut_ty
             .push(quote_spanned! { span => &'a #ty });
-        self.all_fields
-            .mut_layout_ty
-            .push(quote_spanned! { span => &'a mut #ty });
         self.all_fields
             .init_field
             .push(quote_spanned! { span => self.#ident });
@@ -862,9 +851,6 @@ impl FieldGroups {
             .push(quote_spanned! { span => &'a #ty });
         self.all_fields
             .mut_ty
-            .push(quote_spanned! { span => ::core::pin::Pin<&'a mut #ty> });
-        self.all_fields
-            .mut_layout_ty
             .push(quote_spanned! { span => ::core::pin::Pin<&'a mut #ty> });
         self.all_fields.init_field.push(quote_spanned! { span =>
             ::varlen::macro_support::init_field(self.#ident, p, layout.#ident, layout.#layout_ident)
@@ -951,9 +937,6 @@ impl FieldGroups {
         self.all_fields
             .mut_ty
             .push(quote_spanned! { span => &'a mut [#elem_ty] });
-        self.all_fields
-            .mut_layout_ty
-            .push(quote_spanned! { span => &'a mut [#elem_ty] });
         self.all_fields.init_field.push(quote_spanned! { span =>
             ::varlen::macro_support::init_array(self.#ident, p, layout.#ident, layout.#len_ident)
         });
@@ -995,7 +978,7 @@ fn parse_fields(fields: Punctuated<Field, Comma>, mod_name: &Ident) -> Result<Fi
         let mut set_type = |t, span| {
             if field_type != FieldType::Normal {
                 err = Some(Err(
-                    Error("Field must have at most one of #[varlen], #[varlen_array], #[length] attributes", span)
+                    Error("Field must have at most one of #[varlen], #[varlen_array], #[controls_layout] attributes", span)
                 ));
             } else {
                 field_type = t;
