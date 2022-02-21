@@ -1,4 +1,6 @@
 //! Macro `#[define_varlen]` for defining variable-length structs.
+//! 
+//! See [`varlen` crate](https://docs.rs/varlen).
 
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
