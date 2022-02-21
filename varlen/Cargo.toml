@@ -8,14 +8,10 @@ repository = "https://github.com/reinerp/varlen-rs"
 homepage = "https://github.com/reinerp/varlen-rs"
 keywords = [
     "memory",
-    "no_std",
-    "macro",
-    "utility",
-    "encoding",
+    "layout",
     "data",
     "array",
     "unsized",
-    "layout",
 ]
 categories = [
     "data-structures",
