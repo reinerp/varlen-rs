@@ -4,7 +4,7 @@ authors = ["Reiner Pope <reiner.pope@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
 description = "Ergonomic variable-length types"
-repository = "https://github.com/reinerp/variable_length"
+repository = "https://github.com/reinerp/varlen-rs"
 keywords = [
     "memory",
     "no_std",
