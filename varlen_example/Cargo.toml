@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Ergonomic variable-length types, example generated code"
 repository = "https://github.com/reinerp/varlen-rs"
+homepage = "https://github.com/reinerp/varlen-rs"
 license = "BSD-3-Clause"
 include = [
 	"Cargo.toml",

@@ -5,6 +5,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Ergonomic variable-length types"
 repository = "https://github.com/reinerp/varlen-rs"
+homepage = "https://github.com/reinerp/varlen-rs"
 keywords = [
     "memory",
     "no_std",
