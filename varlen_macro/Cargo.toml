@@ -26,4 +26,4 @@ proc-macro2 = "1.0.36"
 convert_case = "0.5.0"
 
 [dev-dependencies]
-varlen = { version = "0.1.0", path = "../varlen" }
+# varlen = { version = "0.1.0", path = "../varlen" }
