@@ -46,6 +46,9 @@
     //! checked random access is available.
     )]
 
+#[cfg(doc)]
+use std::vec::Vec;
+
 use crate::owned::Owned;
 use crate::{Initializer, Layout, VarLen};
 use alloc::alloc;
@@ -248,11 +251,7 @@ impl private::Sealed for CheckedIndexing {
         let (new_full_layout, new_bitmask_bytes) = add_bitmask_to_layout(
             alloc::Layout::from_size_align(new_size, old_layout.align()).ok()?,
         )?;
-        let ptr = NonNull::new(alloc::realloc(
-            ptr,
-            old_full_layout,
-            new_full_layout.size(),
-        ))?;
+        let ptr = NonNull::new(alloc::realloc(ptr, old_full_layout, new_full_layout.size()))?;
         let old_bitmask =
             core::slice::from_raw_parts(ptr.as_ptr().add(old_layout.size()), old_bitmask_bytes);
         let new_bitmask =

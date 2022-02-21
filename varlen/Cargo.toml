@@ -5,6 +5,7 @@ edition = "2021"
 categories = [
     "data-structures",
 ]
+license = "BSD-3-Clause"
 
 [dependencies]
 varlen_macro = { version = "0.1", path = "../varlen_macro", optional = true }

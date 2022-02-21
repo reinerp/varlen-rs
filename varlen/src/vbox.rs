@@ -10,6 +10,9 @@
 //! assert_eq!("hello", &s[..]);
 //! ```
 
+#[cfg(doc)]
+use std::boxed::Box;
+
 use crate::VClone;
 
 use super::{Initializer, Layout, VarLen};

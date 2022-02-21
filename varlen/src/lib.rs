@@ -246,6 +246,15 @@
 #![no_std]
 extern crate alloc;
 
+#[cfg(doc)]
+extern crate std;
+#[cfg(doc)]
+use std::boxed::Box;
+#[cfg(doc)]
+use std::string::String;
+#[cfg(doc)]
+use std::vec::Vec;
+
 pub mod array;
 pub mod array_init;
 #[doc(hidden)]
