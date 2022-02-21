@@ -143,23 +143,29 @@ mod tests {
         });
         assert_eq!(*b.refs().header, (123 * 4) + 2);
         assert_eq!(b.refs().arr, &[4, 5]);
-        b.as_mut().with_muts_layout(|muts| {
-            *muts.header += 5 * 4;
-        });
+        let header = b.header;
+        b.as_mut()
+            .try_set_layout_controllers(partial_modify_layout::LayoutControllers {
+                header: header + 5 * 4,
+            })
+            .unwrap();
         assert_eq!(*b.refs().header, (128 * 4) + 2);
         assert_eq!(b.refs().arr, &[4, 5]);
     }
 
     #[test]
-    #[should_panic]
     fn modify_header_field_bad_layout_panics() {
         let mut b = VBox::<PartialModifyLayout>::new(partial_modify_layout::Init {
             header: (123 * 4) + 2,
             arr: MoveFrom([4, 5]),
         });
-        b.as_mut().with_muts_layout(|muts| {
-            *muts.header += 2;
-        });
+        let header = b.header;
+        let result =
+            b.as_mut()
+                .try_set_layout_controllers(partial_modify_layout::LayoutControllers {
+                    header: header + 2,
+                });
+        assert!(result.is_err());
     }
 
     // #[test]

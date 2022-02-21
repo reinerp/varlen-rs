@@ -67,7 +67,9 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 meta:
                     Meta {
                         ident: lengths_ident,
-                        ..
+                        attrs: lengths_attr,
+                        vis: lengths_vis,
+                        vis_inner: lengths_vis_inner,
                     },
                 tys: lengths_ty,
             },
@@ -180,10 +182,10 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 )*
             }
 
-            #tyvis_inner struct MutsLayout<'a> {
+            #tyvis_inner struct LayoutControllers {
                 #(
-                    #all_attr
-                    #all_vis_inner #all_ident: #all_mut_layout_ty,
+                    #lengths_attr
+                    #lengths_vis_inner #lengths_ident: #lengths_ty,
                 )*
             }
         }
@@ -311,20 +313,35 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 }
             }
 
-            #tyvis fn with_muts_layout<R>(mut self: ::core::pin::Pin<&mut Self>, f: impl FnOnce(#mod_name::MutsLayout) -> R) -> R {
-                let layout = ::varlen::VarLen::calculate_layout(self.as_ref().get_ref());
-                let muts = unsafe {
-                    let mut_ref = self.as_mut().get_unchecked_mut();
-                    let mut_ptr = mut_ref as *mut _;
-                    #mod_name::MutsLayout {
-                        #(
-                            #all_ident: #all_mut_field,
-                        )*
-                    }
-                };
-                let r = f(muts);
-                ::core::assert!(layout == ::varlen::VarLen::calculate_layout(self.as_ref().get_ref()));
-                r
+            #tyvis fn try_set_layout_controllers(
+                mut self: ::core::pin::Pin<&mut Self>, layout_controllers: #mod_name::LayoutControllers
+            ) -> ::core::result::Result<(), ::varlen::macro_support::LayoutMismatch> {
+                let lengths_before = (
+                    #(
+                        &self.#lengths_ident,
+                    )*
+                );
+                let lengths_after = (
+                    #(
+                        &layout_controllers.#lengths_ident,
+                    )*
+                );
+                let valid = true
+                    #(
+                        & (
+                            #mod_name::lengths::#len_ident(lengths_before) ==
+                            #mod_name::lengths::#len_ident(lengths_after)
+                        )
+                    )*;
+                if valid {
+                    let self_mut = unsafe { self.get_unchecked_mut() };
+                    #(
+                        self_mut.#lengths_ident = layout_controllers.#lengths_ident;
+                    )*
+                    ::core::result::Result::Ok(())
+                } else {
+                    ::core::result::Result::Err(::varlen::macro_support::LayoutMismatch)
+                }
             }
 
             /*

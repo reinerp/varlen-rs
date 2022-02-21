@@ -180,3 +180,8 @@ pub const fn array_max(arr: &[usize]) -> usize {
 pub fn invalid_drop_call() -> ! {
     panic!("Called drop on a VarLen type; should have used vdrop instead")
 }
+
+/// Error representing that a variable-length type was modified in a way which caused its
+/// layout to change.
+#[derive(Clone, Copy, Debug)]
+pub struct LayoutMismatch;
