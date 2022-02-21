@@ -1,12 +1,21 @@
 [package]
 name = "varlen_macro"
+authors = ["Reiner Pope <reiner.pope@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
+description = "Ergonomic variable-length types, procedural macros"
+repository = "https://github.com/reinerp/variable_length"
+include = [
+	"Cargo.toml",
+	"LICENSE",
+	"src/**/*.rs",
+    "README.md",
+]
+license = "BSD-3-Clause"
+readme = "README.md"
 
 [lib]
 proc-macro = true
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 syn = { version = "1.0.85", features = ["derive", "parsing", "extra-traits", "full"] }

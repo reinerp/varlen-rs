@@ -1,4 +1,4 @@
-#![doc = crate::doc_macro::make_svgbobdoc!(
+// #![doc = crate::doc_macro::make_svgbobdoc!(
 //! # `varlen`
 //! Ergonomic variable-length types.
 //!
@@ -189,7 +189,7 @@
 //! # }
 //! ```
 //! 
-)]
+// )]
 //! # Overview of types
 //!
 //! `varlen` provides variable-length versions of various standard-library types and traits.
@@ -199,20 +199,20 @@
 //! | Name                     | Fixed-length type `T` | Variable-length type `T`                      | Notes                                                                                   |
 //! |--------------------------|-----------------------|-----------------------------------------------|-----------------------------------------------------------------------------------------|
 //! | Immutable reference      | `&T`                  | `&T`                                          |                                                                                         |
-//! | Mutable reference        | `&mut T`              | [`Pin<&mut T>`][std::pin::Pin]                | `Pin<>` required for safety, see below                                                  |
-//! | Owning, non-allocated    | `T`                   | [`Owned<'storage, T>`][crate::owned::Owned]   | `Owned<T>` is still a pointer to `T`'s payload                                          |
-//! | Owning, allocated        | [`Box<T>`]            | [`VBox<T>`][crate::vbox::VBox]                |                                                                                         |
-//! | Sequence                 | [`Vec<T>`]            | [`Seq<T>`][crate::seq::Seq]                   | `Seq` has tightly-packed _variable-size_ elements. Random access is somewhat restricted |
-//! | String                   | [`String`]            | [`Str`][crate::str::Str]                      | String payload immediately follows the size, no pointer following                       |
-//! | Array (fixed-size elems) | [`Box<[u16]>`]        | [`Array<u16>`][crate::array::Array]           | Array payload immediately follows the size, no pointer following                        |
-//! | Tuple                    | `(T, U)`              | [`Tup2<T, U>`][crate::tuple::Tup2]            | Field `U` might not be at a statically known offset from start of object                |
-//! | Clone                    | `Clone::clone()`      | [`VClone::vclone()`][crate::VClone::vclone]   |                                                                                         |
-//! | Copy                     | <implicit>            | [`VCopy::vcopy()`][crate::VCopy::vcopy]       |                                                                                         |
+//! | Mutable reference        | `&mut T`              | [`Pin<&mut T>`](std::pin::Pin)                | `Pin<>` required for safety, see below                                                  |
+//! | Owning, non-allocated    | `T`                   | [`Owned<'storage, T>`](crate::owned::Owned)   | `Owned<T>` is still a pointer to `T`'s payload                                          |
+//! | Owning, allocated        | [`Box<T>`]            | [`VBox<T>`](crate::vbox::VBox)                |                                                                                         |
+//! | Sequence                 | [`Vec<T>`]            | [`Seq<T>`](crate::seq::Seq)                   | `Seq` has tightly-packed _variable-size_ elements. Random access is somewhat restricted |
+//! | String                   | [`String`]            | [`Str`](crate::str::Str)                      | String payload immediately follows the size, no pointer following                       |
+//! | Array (fixed-size elems) | [`Box<[u16]>`]        | [`Array<u16>`](crate::array::Array)           | Array payload immediately follows the size, no pointer following                        |
+//! | Tuple                    | `(T, U)`              | [`Tup2<T, U>`](crate::tuple::Tup2)            | Field `U` might not be at a statically known offset from start of object                |
+//! | Clone                    | `Clone::clone()`      | [`VClone::vclone()`](crate::VClone::vclone)   |                                                                                         |
+//! | Copy                     | <implicit>            | [`VCopy::vcopy()`](crate::VCopy::vcopy)       |                                                                                         |
 //!
 //!
 //! # Use of `Pin`
 //!
-//! Mutable references to variable-length types use [`Pin<&mut T>`][std::pin::Pin] rather than
+//! Mutable references to variable-length types use [`Pin<&mut T>`](std::pin::Pin) rather than
 //! `&mut T`. By doing so, we prevent patterns such as calling [`std::mem::swap`] on
 //! variable-length types. Such patterns would be a safety hazard, because the part of the type
 //! that the Rust compiler knows about when calling [`std::mem::swap`] is just the
@@ -222,7 +222,7 @@
 //!
 //! If you never write `unsafe` code, you don't need to worry about this issue. The only practical
 //! consequence is that mutable access to a variable-length type is always mediated through
-//! [`Pin<&mut T>`][std::pin::Pin] rather than `&mut T`, and you will have to work with the slightly
+//! [`Pin<&mut T>`](std::pin::Pin) rather than `&mut T`, and you will have to work with the slightly
 //! more cumbersome `Pin` APIs.
 //!
 //! On the other hand, if you write `unsafe` code, you may have to be aware of the following
@@ -239,9 +239,9 @@
 //! This crate has no *required* dependencies. The following feature flags exist, which can turn
 //! on some dependencies.
 //!
-//! * `bumpalo`. Enables support for allocating an [`Owned<T>`][crate::owned::Owned] in an `bumpalo::Bump` arena. Adds a dependency on `bumpalo`.
-//! * `macro`. Enables procedural macro support, for defining variable-length structs using [`#[define_varlen]`][crate::define_varlen]. Adds a dependency on `varlen_macro`, `syn` and `quote`.
-//!
+//! * `bumpalo`. Enables support for allocating an [`Owned<T>`](crate::owned::Owned) in an `bumpalo::Bump` arena. Adds a dependency on `bumpalo`.
+//! * `macro`. Enables procedural macro support, for defining variable-length structs using [`#[define_varlen]`](crate::define_varlen). Adds a dependency on `varlen_macro`, `syn` and `quote`.
+//! * `doc`. Enables pretty SVG diagrams in documentation. Adds a lot of dependencies.
 
 #![no_std]
 extern crate alloc;

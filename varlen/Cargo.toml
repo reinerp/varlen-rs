@@ -1,11 +1,36 @@
 [package]
 name = "varlen"
+authors = ["Reiner Pope <reiner.pope@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
+description = "Ergonomic variable-length types"
+repository = "https://github.com/reinerp/variable_length"
+keywords = [
+    "memory",
+    "no_std",
+    "macro",
+    "utility",
+    "encoding",
+    "data",
+    "array",
+    "unsized",
+    "layout",
+]
 categories = [
     "data-structures",
 ]
 license = "BSD-3-Clause"
+include = [
+	"Cargo.toml",
+	"LICENSE",
+	"src/**/*.rs",
+    "README.md",
+]
+readme = "README.md"
+
+[package.metadata.docs.rs]
+all-features = true
+
 
 [dependencies]
 varlen_macro = { version = "0.1", path = "../varlen_macro", optional = true }
@@ -13,5 +38,11 @@ bumpalo = { version = "3.9.1", optional = true }
 svgbobdoc = { version = "0.3.0-alpha", optional = true }
 
 [features]
+# Render pretty SVG in documentation. Adds a lot of dependencies.
 doc = ["svgbobdoc/enable"]
+
+# Enable procedural macro #[define_varlen]. Adds dependency on `syn`.
 macro = ["varlen_macro"]
+
+# Feature 'bumpalo' is available, for allocating a VarLen type in
+# a bumpalo::Bump arena. Adds a dependency on bumpalo.
