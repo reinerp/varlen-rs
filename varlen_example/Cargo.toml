@@ -19,7 +19,7 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-varlen = { version = "0.1", path = "../varlen", features = ["macro"] }
+varlen = { version = "0.1.2", path = "../varlen", features = ["macro"] }
 
 [dev-dependencies]
 trybuild = "1.0.54"
