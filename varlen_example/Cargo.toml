@@ -1,6 +1,6 @@
 [package]
 name = "varlen_example"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "Ergonomic variable-length types, example generated code"
 repository = "https://github.com/reinerp/varlen-rs"
