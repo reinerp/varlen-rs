@@ -2,10 +2,12 @@
 //! 
 //! See [`varlen` crate](https://docs.rs/varlen).
 
+use std::collections::HashSet;
+
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::parse_quote;
+use syn::{parse_quote, Generics, GenericParam, Lifetime};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
@@ -172,12 +174,6 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             ))
         }
     };
-    if d.generics.params.len() != 0 || d.generics.where_clause.is_some() {
-        return Err(Error(
-            "define_varlen does not yet support generic types",
-            d.generics.span(),
-        ));
-    }
     let d_attrs = d.attrs;
     let fields = if let Data::Struct(s) = d.data {
         if let Fields::Named(n) = s.fields {
@@ -222,6 +218,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 init_ty_constraints: varlen_init_ty_constraint,
                 layout_idents: varlen_layout_ident,
                 layout_ty: varlen_layout_ty,
+                layout_ty_refs: varlen_layout_ty_refs,
                 cat_field_fast: varlen_cat_field_fast,
                 cat_field_cautious: varlen_cat_field_cautious,
                 align_of_field: varlen_align_of_field,
@@ -247,6 +244,11 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             },
     } = parse_fields(fields, &mod_name)?;
 
+    let (generics_structdef, generics_impl, generics_apply, generics_where) 
+        = parse_generics(&d.generics, None);
+    let (layout_generics_structdef, layout_generics_impl, layout_generics_apply, layout_generics_where) 
+        = parse_generics(&d.generics, Some(varlen_layout_ty_refs));
+
     // TODO(reinerp): This is potentially quadratic syntax size. Create type synonym instead,
     // to keep it linear.
     let len_fn_arg = quote! {
@@ -266,8 +268,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             use super::*;
 
             /// Array offsets and lengths for all trailing arrays and nested types.
-            #[derive(PartialEq, Eq)]
-            #tyvis_inner struct VarLenLayout {
+            #tyvis_inner struct VarLenLayout<#(#layout_generics_structdef),*> #layout_generics_where {
                 pub(super) size: usize,
                 #(
                     pub(super) #varlen_ident: usize,
@@ -275,7 +276,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 )*
             }
 
-            impl ::varlen::Layout for VarLenLayout {
+            impl<#(#layout_generics_impl),*> ::varlen::Layout for VarLenLayout<#(#layout_generics_apply),*> #layout_generics_where {
                 #[inline(always)]
                 fn size(&self) -> usize {
                     self.size
@@ -301,14 +302,14 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 )*
             }
 
-            #tyvis_inner struct Muts<'a> {
+            #tyvis_inner struct Muts<'a #(, #generics_structdef)*> {
                 #(
                     #all_attr
                     #all_vis_inner #all_ident: #all_mut_ty,
                 )*
             }
 
-            #tyvis_inner struct Refs<'a> {
+            #tyvis_inner struct Refs<'a #(, #generics_structdef)*> {
                 #(
                     #all_attr
                     #all_vis_inner #all_ident: #all_ref_ty,
@@ -325,30 +326,30 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
 
         #ty_attrs
         #(#d_attrs)*
-        #tyvis struct #tyname {
+        #tyvis struct #tyname<#(#generics_structdef),*> #generics_where {
             #(
                 #all_attr
                 #all_vis #all_ident: #all_decl_ty,
             )*
         }
 
-        impl ::core::ops::Drop for #tyname {
+        impl<#(#generics_impl),*> ::core::ops::Drop for #tyname<#(#generics_apply),*> #generics_where {
             fn drop(&mut self) {
                 ::varlen::macro_support::invalid_drop_call()
             }
         }
 
-        unsafe impl ::varlen::VarLen for #tyname {
-            type Layout = #mod_name::VarLenLayout;
+        unsafe impl<#(#generics_impl),*> ::varlen::VarLen for #tyname<#(#generics_apply),*> #generics_where {
+            type Layout = #mod_name::VarLenLayout<#(#layout_generics_apply),*>;
 
             #[inline(always)]
-            fn calculate_layout(&self) -> #mod_name::VarLenLayout {
+            fn calculate_layout(&self) -> #mod_name::VarLenLayout<#(#layout_generics_apply),*> {
                 let lengths = (
                     #(
                         &self.#lengths_ident,
                     )*
                 );
-                let size = ::core::mem::size_of::<#tyname>();
+                let size = ::core::mem::size_of::<Self>();
                 #(
                     let ((#varlen_ident, #varlen_layout_ident, size)) = #varlen_cat_field_fast;
                 )*
@@ -376,7 +377,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
                 )*
                 false;
 
-            unsafe fn vdrop(self: ::core::pin::Pin<&mut Self>, layout: #mod_name::VarLenLayout) {
+            unsafe fn vdrop(self: ::core::pin::Pin<&mut Self>, layout: #mod_name::VarLenLayout<#(#layout_generics_apply),*>) {
                 let p_typed = self.get_unchecked_mut() as *mut Self;
                 let p = p_typed as *mut u8;
                 #(
@@ -385,10 +386,12 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             }
         }
 
-        unsafe impl< #( #varlen_init_ty_param: #varlen_init_ty_constraint, )* >
-                ::varlen::Initializer<#tyname> for #mod_name::Init< #( #varlen_init_ty_param, )* > {
+        unsafe impl< #(#generics_impl,)* #( #varlen_init_ty_param: #varlen_init_ty_constraint, )* >
+                ::varlen::Initializer<#tyname<#(#generics_apply),*>> 
+                for #mod_name::Init< #( #varlen_init_ty_param, )* > 
+                #generics_where {
             #[inline(always)]
-            fn calculate_layout_cautious(&self) -> ::core::option::Option<#mod_name::VarLenLayout> {
+            fn calculate_layout_cautious(&self) -> ::core::option::Option<#mod_name::VarLenLayout<#(#layout_generics_apply),*>> {
                 let lengths = (
                     #(
                         &self.#lengths_ident,
@@ -408,7 +411,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             }
 
             #[inline(always)]
-            unsafe fn initialize(self, dst: ::core::ptr::NonNull<#tyname>, layout: #mod_name::VarLenLayout) {
+            unsafe fn initialize(self, dst: ::core::ptr::NonNull<#tyname<#(#generics_apply),*>>, layout: #mod_name::VarLenLayout<#(#layout_generics_apply),*>) {
                 // Initialize header, then initialize tail in program order.
                 let p = dst.cast::<u8>();
                 ::core::ptr::write(dst.as_ptr(), #tyname {
@@ -419,9 +422,9 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             }
         }
 
-        impl #tyname {
+        impl<#(#generics_impl),*> #tyname<#(#generics_apply),*> #generics_where {
             /// Mutable access to all fields simultaneously, except the header.
-            #tyvis fn muts(mut self: ::core::pin::Pin<&mut Self>) -> #mod_name::Muts {
+            #tyvis fn muts(mut self: ::core::pin::Pin<&mut Self>) -> #mod_name::Muts<'_  #(, #generics_apply)*> {
                 let layout = ::varlen::VarLen::calculate_layout(self.as_ref().get_ref());
                 unsafe {
                     let mut_ref = self.get_unchecked_mut();
@@ -435,7 +438,7 @@ fn define_varlen_impl(ty_attrs: TokenStream, d: TokenStream) -> Result<TokenStre
             }
 
             /// Mutable access to all fields simultaneously, except the header.
-            #tyvis fn refs(&self) -> #mod_name::Refs {
+            #tyvis fn refs(&self) -> #mod_name::Refs<'_ #(, #generics_apply)*> {
                 let layout = ::varlen::VarLen::calculate_layout(self);
                 unsafe {
                     #mod_name::Refs {
@@ -635,6 +638,45 @@ impl LengthFields {
     }
 }
 
+struct GenericRefs {
+    /// Type identifiers referenced by a type.
+    idents: HashSet<Ident>,
+    /// Lifetimes referenced by a type.
+    lifetimes: HashSet<Lifetime>,
+}
+
+impl GenericRefs {
+    fn new() -> Self {
+        GenericRefs {
+            idents: HashSet::new(),
+            lifetimes: HashSet::new(),
+        }
+    }
+
+    fn add(&mut self, ty: &Type) {
+        syn::visit::visit_type(self, ty);
+    }
+}
+
+impl<'ast> syn::visit::Visit<'ast> for GenericRefs {
+    fn visit_type_path(&mut self, node: &'ast syn::TypePath) {
+        if node.qself.is_none() {
+            if let Some(ident) = node.path.get_ident() {
+                self.idents.insert(ident.clone());
+                return;
+            }
+        }
+        if let Some(it) = &node.qself {
+            self.visit_qself(it);
+        }
+        self.visit_path(&node.path);
+    }
+
+    fn visit_lifetime(&mut self, node: &'ast Lifetime) {
+        self.lifetimes.insert(node.clone());
+    }
+}
+
 /// Fields associated with variable-length (array or VarLen) types.
 struct FieldMarkers {
     /// Universal metadata
@@ -647,6 +689,8 @@ struct FieldMarkers {
     layout_idents: Vec<Ident>,
     /// type of 'field_name_#layout'
     layout_ty: Vec<TokenStream>,
+    /// Generic types referenced by layout_ty
+    layout_ty_refs: GenericRefs,
     /// calls 'cat_field_cautious' with 'size: usize', returning 'Option<(usize, usize, field::Layout)>'
     cat_field_cautious: Vec<TokenStream>,
     /// calls 'cat_field_fast' with 'size: usize', returning 'Option<(usize, usize, field::Layout)>'
@@ -663,6 +707,7 @@ impl FieldMarkers {
             init_ty_constraints: Vec::new(),
             layout_idents: Vec::new(),
             layout_ty: Vec::new(),
+            layout_ty_refs: GenericRefs::new(),
             cat_field_cautious: Vec::new(),
             cat_field_fast: Vec::new(),
             align_of_field: Vec::new(),
@@ -828,6 +873,7 @@ impl FieldGroups {
         self.varlen_fields
             .layout_ty
             .push(quote_spanned! { span => <#ty as ::varlen::VarLen>::Layout });
+        self.varlen_fields.layout_ty_refs.add(&ty);
         self.varlen_fields
             .cat_field_cautious
             .push(quote_spanned! { span =>
@@ -1015,4 +1061,58 @@ fn parse_fields(fields: Punctuated<Field, Comma>, mod_name: &Ident) -> Result<Fi
         }
     }
     Ok(field_groups)
+}
+
+
+
+fn parse_generics(generics: &Generics, filter: Option<GenericRefs>) -> (Vec<GenericParam>, Vec<GenericParam>, Vec<TokenStream>, TokenStream) {
+    let mut structdef_params = Vec::new();
+    let where_clause = &generics.where_clause;
+    let mut impl_params = Vec::new();
+    let mut apply_params = Vec::new();
+    'outer: for param in &generics.params {
+        let (structdef_param, apply_param, impl_param) = match param {
+            GenericParam::Const(c) => {
+                let ident = &c.ident;
+                if let Some(filter) = &filter {
+                    if !filter.idents.contains(&ident) {
+                        continue 'outer;
+                    }
+                }
+                let structdef_param = c.clone();
+                let mut apply_param = c.clone();
+                apply_param.default = None;
+                (GenericParam::Const(structdef_param), quote!( #ident ), GenericParam::Const(apply_param))
+            },
+            GenericParam::Type(c) => {
+                let ident = &c.ident;
+                if let Some(filter) = &filter {
+                    if !filter.idents.contains(&ident) {
+                       continue 'outer;
+                    }
+                }
+                let structdef_param = c.clone();
+                let mut apply_param = c.clone();
+                apply_param.default = None;
+                (GenericParam::Type(structdef_param), quote!( #ident ),
+                GenericParam::Type(apply_param))
+            },
+            GenericParam::Lifetime(c) => {
+                let lifetime = c.lifetime.clone();
+                if let Some(filter) = &filter {
+                    if !filter.lifetimes.contains(&lifetime) {
+                        continue 'outer;
+                    }
+                }
+                let structdef_param = c.clone();
+                let apply_param = c.clone();
+                (GenericParam::Lifetime(structdef_param), quote!( #lifetime ),
+                GenericParam::Lifetime(apply_param))
+            },
+        };
+        structdef_params.push(structdef_param);
+        apply_params.push(apply_param);
+        impl_params.push(impl_param);
+    }
+    (structdef_params, impl_params, apply_params, quote!( #where_clause ))
 }

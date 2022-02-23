@@ -55,9 +55,7 @@ pub struct CoolStructWithMutableFields {
 
 #[cfg(test)]
 mod tests {
-    use varlen::array_init::{FillSequentially, MoveFrom};
-    use varlen::define_varlen;
-    use varlen::vbox::VBox;
+    use varlen::prelude::*;
 
     #[define_varlen]
     struct T {
@@ -168,6 +166,29 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[define_varlen]
+    pub struct GenericVarLenField<T: Default = usize> {
+        #[varlen]
+        arr: Array<T>,
+    }
+
+    #[define_varlen]
+    pub struct GenericVarLenArrayField<T: Default = usize> {
+        #[controls_layout]
+        len: usize,
+        #[varlen_array]
+        arr: [T; *len],
+    }
+
+    #[define_varlen]
+    pub struct NoGeneric {
+        #[controls_layout]
+        len: usize,
+        #[varlen_array]
+        arr: [u8; *len],
+    }
+
+    #[cfg(not(miri))]
     #[test]
     fn compile_errors_are_good() {
         let t = trybuild::TestCases::new();

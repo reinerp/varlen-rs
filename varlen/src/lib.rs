@@ -545,7 +545,7 @@ unsafe impl<'a, T: VCopy<'a>> Initializer<T> for VCopier<'a, T> {
 }
 
 /// A layout of a variable-length object.
-pub trait Layout: Eq {
+pub trait Layout {
     /// The size of the object in bytes.
     fn size(&self) -> usize;
 }

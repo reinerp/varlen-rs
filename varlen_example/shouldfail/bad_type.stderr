@@ -19,15 +19,6 @@ error[E0412]: cannot find type `UndefinedType3` in this scope
 error[E0412]: cannot find type `UndefinedType3` in this scope
   --> shouldfail/bad_type.rs:11:11
    |
-4  | struct StructWithUndefinedTypes  {
-   |                                - help: you might be missing a type parameter: `<UndefinedType3>`
-...
-11 |     arr: [UndefinedType3; 4usize],
-   |           ^^^^^^^^^^^^^^ not found in this scope
-
-error[E0412]: cannot find type `UndefinedType3` in this scope
-  --> shouldfail/bad_type.rs:11:11
-   |
 11 |     arr: [UndefinedType3; 4usize],
    |           ^^^^^^^^^^^^^^         - help: you might be missing a type parameter: `, UndefinedType3`
    |           |

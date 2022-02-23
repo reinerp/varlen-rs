@@ -19,7 +19,7 @@ readme = "README.md"
 proc-macro = true
 
 [dependencies]
-syn = { version = "1.0.85", features = ["derive", "parsing", "extra-traits", "full"] }
+syn = { version = "1.0.85", features = ["derive", "parsing", "extra-traits", "full", "visit"] }
 quote = "1.0.14"
 lazy_static = "1.4.0"
 proc-macro2 = "1.0.36"
