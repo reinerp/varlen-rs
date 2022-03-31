@@ -26,7 +26,7 @@ error: Visibility must be one of: (none), pub, pub(crate), pub(self), pub(super)
   --> shouldfail/unsupported_syntax.rs:17:5
    |
 17 |     pub(in crate::foo::bar) x: u8,
-   |     ^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Fields annotated with #[varlen_array] must be of array type
   --> shouldfail/unsupported_syntax.rs:23:8
@@ -38,7 +38,7 @@ error: Field must have at most one of #[varlen], #[varlen_array], #[controls_lay
   --> shouldfail/unsupported_syntax.rs:28:21
    |
 28 |     #[varlen_array] #[controls_layout]
-   |                     ^
+   |                     ^^^^^^^^^^^^^^^^^^
 
 error: define_varlen could not parse this as a struct
   --> shouldfail/unsupported_syntax.rs:33:1

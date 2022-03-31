@@ -56,6 +56,7 @@ pub struct CoolStructWithMutableFields {
 #[cfg(test)]
 mod tests {
     use varlen::prelude::*;
+    use memoffset::offset_of;
 
     #[define_varlen]
     struct T {
@@ -188,6 +189,37 @@ mod tests {
         arr: [u8; *len],
     }
 
+    #[define_varlen]
+    pub struct ReprRust {
+        x: u8,
+        y: u32,
+        #[controls_layout]
+        z: u8,
+        #[varlen_array]
+        arr: [u8; *z as usize],
+    }
+
+    #[define_varlen]
+    #[repr(C)]
+    pub struct ReprC {
+        x: u8,
+        y: u32,
+        #[controls_layout]
+        z: u8,
+        #[varlen_array]
+        arr: [u8; *z as usize],
+    }
+
+    #[test]
+    fn test_repr() {
+        assert!(std::mem::size_of::<ReprRust>() <= 8);
+        assert_eq!(std::mem::size_of::<ReprC>(), 12);
+        assert_eq!(0, offset_of!(ReprC, x));
+        assert_eq!(4, offset_of!(ReprC, y));
+        assert_eq!(8, offset_of!(ReprC, z));
+    }
+
+    
     #[cfg(not(miri))]
     #[test]
     fn compile_errors_are_good() {

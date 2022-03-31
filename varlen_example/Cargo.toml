@@ -23,3 +23,4 @@ varlen = { version = "0.1.2", path = "../varlen", features = ["macro"] }
 
 [dev-dependencies]
 trybuild = "1.0.54"
+memoffset = "0.6.5"

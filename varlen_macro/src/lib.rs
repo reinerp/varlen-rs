@@ -117,6 +117,8 @@ use syn::{Attribute, Data, DeriveInput, Field, Fields, Ident, Type, Visibility};
 /// The object is laid out in memory with the fixed-length fields first. These are
 /// the fields which are not annotated with `#[varlen]` or `#[varlen_array]`. The
 /// fixed-length fields are laid out in whatever order is chosen by the Rust compiler.
+/// (You may annotate the struct with `#[repr(C)]` or any other `#[repr(...)]` 
+/// attribute to control the layout of the fixed-length fields.)
 ///
 /// The variable-length fields always follow the fixed-length fields in memory. The
 /// variable-length fields are always laid out in the order specified in the struct
